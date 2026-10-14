@@ -1,5 +1,6 @@
 import { CheckCircle2 } from "lucide-react"
 
+import mark from "@/assets/parentwise-mark-128.png"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 /**
@@ -11,7 +12,8 @@ export function InstalledPage() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <img src={mark} alt="ParentWise" className="mb-2 size-10" />
+        <CardTitle className="flex items-center gap-2 font-serif text-xl">
           <CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
           Global Breakout is added to your Zoom
         </CardTitle>

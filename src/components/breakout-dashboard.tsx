@@ -5,6 +5,7 @@ import { HostPanel } from "@/components/host-panel"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useZoomSdk } from "@/hooks/use-zoom-sdk"
+import mark from "@/assets/parentwise-mark-128.png"
 
 const ROLE_LABELS: Record<string, string> = {
   host: "Host",
@@ -44,9 +45,12 @@ export function BreakoutDashboard() {
   return (
     <div className="flex w-full flex-col gap-4">
       <header className="flex items-start justify-between gap-3 px-1">
-        <div className="min-w-0 space-y-0.5">
-          <h1 className="text-xl font-semibold">Global Breakout</h1>
-          <p className="truncate text-sm text-muted-foreground">{zoom.meeting.meetingTopic}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <img src={mark} alt="" className="size-8 shrink-0" />
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="font-serif text-xl font-semibold">Global Breakout</h1>
+            <p className="truncate text-sm text-muted-foreground">{zoom.meeting.meetingTopic}</p>
+          </div>
         </div>
         <div className="flex shrink-0 gap-2">
           {zoom.isMock && <Badge variant="outline">Mock</Badge>}
