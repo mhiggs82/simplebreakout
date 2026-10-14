@@ -83,12 +83,11 @@ export function CafeSettingsCard({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NO_HOST}>No Table Host</SelectItem>
-                    {people.map((person) => {
+                    {people.filter((person) => !person.isSelf).map((person) => {
                       const elsewhere = tableOf(person.uuid)
                       return (
                         <SelectItem key={person.uuid} value={person.uuid}>
                           Host: {person.name}
-                          {person.isSelf ? " (you)" : ""}
                           {elsewhere && elsewhere.id !== table.id ? ` · now at ${elsewhere.name}` : ""}
                         </SelectItem>
                       )
@@ -118,7 +117,8 @@ export function CafeSettingsCard({
             onChange={(rounds) => onChange({ ...value, ...rounds })}
           />
           <p className="text-xs text-muted-foreground">
-            Hosts and co-hosts pinned to a table join it from their own app panel, so they need SimpleBreakout open.
+            You stay in the main room and can visit any table from the round controls. Co-hosts pinned to a
+            table join it from their own app panel, so they need SimpleBreakout open.
           </p>
         </fieldset>
       </CardContent>

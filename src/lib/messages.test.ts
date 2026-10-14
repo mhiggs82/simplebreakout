@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import type { MatchConfig } from "@/lib/matchmaking/types"
-import { byteSize, decode, encode, MAX_MESSAGE_BYTES, questionnaireFor, sanitizeAnswers } from "./messages"
+import {
+  byteSize,
+  decode,
+  encode,
+  fitChunks,
+  fitLatest,
+  MAX_MESSAGE_BYTES,
+  questionnaireFor,
+  sanitizeAnswers,
+} from "./messages"
 
 const config: MatchConfig = {
   mode: "attributes",
@@ -56,14 +65,26 @@ describe("messages", () => {
 
 describe("interaction messages", () => {
   const messages = [
-    { type: "round" as const, round: { activity: "cafe" as const, number: 2, total: 3, prompt: "What surprised you?", endsAt: 1_700_000_000_000 } },
-    { type: "round" as const, round: { activity: "speed" as const, number: 1, total: 5, prompt: undefined, endsAt: null } },
+    { type: "round" as const, round: { activity: "cafe" as const, number: 2, total: 3, prompt: "What surprised you?", endsAt: 1_700_000_000_000, kind: "rooms" as const, harvest: false } },
+    { type: "round" as const, round: { activity: "oneTwoFour" as const, number: 1, total: 4, prompt: "Reflect alone", endsAt: 5, kind: "main" as const, label: "On your own", harvest: true } },
+    { type: "round" as const, round: { activity: "speed" as const, number: 1, total: 5, prompt: undefined, endsAt: null, kind: "rooms" as const, label: undefined, harvest: false } },
     { type: "warning" as const, secondsLeft: 60 },
     { type: "ended" as const },
     { type: "seat" as const, participantUUID: "p1", roomUuid: "room-1", roomName: "Scaling" },
     { type: "fishbowl" as const, inner: ["a", "b"] },
     { type: "raise" as const },
     { type: "lower" as const },
+    { type: "poll" as const, poll: { id: "p1", kind: "poll" as const, question: "Energy?", options: ["Low", "High"], labels: undefined } },
+    { type: "poll" as const, poll: { id: "p2", kind: "spectrum" as const, question: "Remote work is better", options: undefined, labels: ["Disagree", "Agree"] as [string, string] } },
+    { type: "vote" as const, pollId: "p1", vote: { choice: 1 } },
+    { type: "vote" as const, pollId: "p2", vote: { value: 7 } },
+    { type: "vote" as const, pollId: "p3", vote: { text: "curious" } },
+    { type: "results" as const, results: { id: "p1", kind: "poll" as const, question: "Energy?", counts: [3, 5], options: ["Low", "High"], labels: undefined, words: undefined } },
+    { type: "results" as const, results: { id: "p3", kind: "cloud" as const, question: "One word", counts: undefined, options: undefined, labels: undefined, words: [["curious", 4], ["tired", 1]] as [string, number][] } },
+    { type: "insight" as const, text: "Trust is built in small moments" },
+    { type: "harvest" as const, items: [{ room: "Room 1", text: "Listen first" }] },
+    { type: "station" as const, room: "Station A", members: ["u1", "u2"], notes: ["Note one"] },
+    { type: "tables" as const, sessionId: "s1", total: 2, tables: [{ uuid: "r1", name: "Ideas", count: 3, limit: 5 }] },
   ]
 
   it.each(messages)("round-trips $type", (message) => {
@@ -79,5 +100,33 @@ describe("interaction messages", () => {
   it("keeps a full fishbowl stage under the size limit", () => {
     const inner = Array.from({ length: 9 }, () => "abcdefgh-1234-5678-9abc-def012345678")
     expect(byteSize(encode({ type: "fishbowl", inner }))).toBeLessThan(MAX_MESSAGE_BYTES)
+  })
+})
+
+describe("size fitting", () => {
+  it("keeps the latest harvest items that fit", () => {
+    const items = Array.from({ length: 40 }, (_, i) => ({ room: `Room ${i}`, text: `Insight number ${i} `.repeat(4) }))
+    const message = fitLatest(items, (kept) => ({ type: "harvest", items: kept }))
+    expect(byteSize(encode(message))).toBeLessThanOrEqual(MAX_MESSAGE_BYTES)
+    expect(message.type === "harvest" && message.items.at(-1)?.room).toBe("Room 39")
+  })
+
+  it("splits many Open Space tables across messages", () => {
+    const tables = Array.from({ length: 30 }, (_, i) => ({
+      uuid: `{${"x".repeat(36)}-${i}}`,
+      name: `A fairly long table name ${i}`,
+      count: i,
+      limit: 8,
+    }))
+    const messages = fitChunks(tables, (chunk) => ({ type: "tables", sessionId: "s", total: 30, tables: chunk }))
+    expect(messages.length).toBeGreaterThan(1)
+    for (const m of messages) expect(byteSize(encode(m))).toBeLessThanOrEqual(MAX_MESSAGE_BYTES)
+    expect(messages.flatMap((m) => (m.type === "tables" ? m.tables : []))).toHaveLength(30)
+  })
+
+  it("rejects polls without options and out-of-range votes", () => {
+    expect(decode({ t: "sb1/poll", i: "p", k: "poll", q: "?" })).toBeNull()
+    expect(decode({ t: "sb1/vote", i: "p", v: 11 })).toBeNull()
+    expect(decode({ t: "sb1/vote", i: "p", c: 9 })).toBeNull()
   })
 })

@@ -54,7 +54,22 @@ export interface MatchPlan {
 }
 
 /** The facilitation format the host is running. */
-export type Activity = "match" | "cafe" | "speed" | "fishbowl"
+export type Activity =
+  | "match"
+  | "cafe"
+  | "speed"
+  | "fishbowl"
+  | "oneTwoFour"
+  | "openSpace"
+  | "tps"
+  | "pulse"
+  | "spectrum"
+  | "gallery"
+
+/** Activities driven by the round runner (timed steps). */
+export type TimedActivity = "cafe" | "speed" | "oneTwoFour" | "tps" | "gallery" | "spectrum"
+
+export const TIMED_ACTIVITIES: readonly TimedActivity[] = ["cafe", "speed", "oneTwoFour", "tps", "gallery", "spectrum"]
 
 /** A named World Café table. Pinned people (e.g. the Table Host) stay put every round. */
 export interface TableDef {

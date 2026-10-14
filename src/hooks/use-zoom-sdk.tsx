@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from "react"
 
-import { createMockZoomClient, type MockOptions, type ZoomClient } from "@/lib/zoom-client"
+import { createMockZoomClient, MOCK_SCENARIOS, type MockOptions, type ZoomClient } from "@/lib/zoom-client"
 
 // Every API or event the app calls must be declared here AND enabled for the
 // app in the Zoom Marketplace build flow, or the client rejects the call.
@@ -75,12 +75,12 @@ function getMockRole(): string | null {
     : null
 }
 
-/** `?scenario=round|fishbowl` picks the mock attendee demo; `?fast=1` shortens closing. */
+/** `?scenario=...` picks the mock attendee demo (see MOCK_SCENARIOS); `?fast=1` shortens closing. */
 function mockOptions(): MockOptions {
   const params = new URLSearchParams(window.location.search)
   const scenario = params.get("scenario")
   return {
-    scenario: scenario === "round" || scenario === "fishbowl" ? scenario : "questions",
+    scenario: MOCK_SCENARIOS.find((s) => s === scenario) ?? "questions",
     closeDelayMs: params.has("fast") ? 500 : 3000,
   }
 }

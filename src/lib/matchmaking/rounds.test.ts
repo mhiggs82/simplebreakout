@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest"
 
-import { emptyHistory, planCafeRound, planSpeedRound, promptFor, recordRound } from "./rounds"
+import {
+  emptyHistory,
+  formGalleryGroups,
+  mergeGroups,
+  planCafeRound,
+  planGalleryRound,
+  planSpeedRound,
+  promptFor,
+  recordRound,
+} from "./rounds"
 import type { Candidate, TableDef } from "./types"
 
 function seeded(seed: number) {
@@ -124,5 +133,63 @@ describe("promptFor", () => {
     expect(promptFor(["One", " ", "Two"], 0)).toBe("One")
     expect(promptFor(["One", " ", "Two"], 5)).toBe("Two")
     expect(promptFor([], 0)).toBeUndefined()
+  })
+})
+
+describe("mergeGroups (1-2-4-All)", () => {
+  it("builds fours out of the previous pairs", () => {
+    const everyone = people(8)
+    const pairsPlan = planSpeedRound(everyone, 2, emptyHistory(), seeded(8))
+    const fours = mergeGroups(pairsPlan, everyone, seeded(9))
+    expect(fours.rooms).toHaveLength(2)
+    for (const room of fours.rooms) {
+      expect(room.members).toHaveLength(4)
+      // Each four is exactly two whole pairs.
+      const pairsInside = pairsPlan.rooms.filter((pair) =>
+        pair.members.every((m) => room.members.some((x) => x.uuid === m.uuid)),
+      )
+      expect(pairsInside).toHaveLength(2)
+    }
+  })
+
+  it("folds an odd pair into a four and seats newcomers, dropping leavers", () => {
+    const everyone = people(10)
+    const pairsPlan = planSpeedRound(everyone, 2, emptyHistory(), seeded(10)) // 5 pairs
+    const present = [...everyone.slice(1), { uuid: "new", name: "New", tags: {} }]
+    const plan = mergeGroups(pairsPlan, present, seeded(11))
+    expect(plan.rooms).toHaveLength(2)
+    const all = plan.rooms.flatMap((r) => r.members.map((m) => m.uuid))
+    expect(all).toContain("new")
+    expect(all).not.toContain("u0")
+    expect(all).toHaveLength(10)
+  })
+})
+
+describe("gallery walk", () => {
+  it("moves each group to every station exactly once", () => {
+    const stations = ["A", "B", "C"]
+    const everyone = people(9)
+    const groups = formGalleryGroups(everyone, stations.length, seeded(12))
+    const visits = new Map<string, Set<string>>()
+    for (let round = 0; round < 3; round++) {
+      const plan = planGalleryRound(stations, groups, everyone, round)
+      expect(plan.rooms.map((r) => r.name).sort()).toEqual(stations)
+      for (const room of plan.rooms) {
+        for (const m of room.members) {
+          if (!visits.has(m.uuid)) visits.set(m.uuid, new Set())
+          visits.get(m.uuid)!.add(room.name)
+        }
+      }
+    }
+    for (const seen of visits.values()) expect(seen.size).toBe(3)
+  })
+
+  it("keeps groups together between rounds", () => {
+    const everyone = people(6)
+    const groups = formGalleryGroups(everyone, 3, seeded(13))
+    const first = planGalleryRound(["A", "B", "C"], groups, everyone, 0)
+    const second = planGalleryRound(["A", "B", "C"], groups, everyone, 1)
+    const key = (plan: typeof first) => plan.rooms.map((r) => r.members.map((m) => m.uuid).sort().join()).sort()
+    expect(key(second)).toEqual(key(first))
   })
 })

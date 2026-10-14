@@ -1,12 +1,14 @@
 import { FastForward, Loader2, Pause, Play, Plus, Sparkles, Square } from "lucide-react"
 
 import { RoomPlan } from "@/components/room-plan"
+import { RoomVisitor } from "@/components/room-visitor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { formatClock, useNow } from "@/hooks/use-now"
 import type { useRoundRunner } from "@/hooks/use-round-runner"
 import type { MatchConfig } from "@/lib/matchmaking/types"
+import type { ZoomClient } from "@/lib/zoom-client"
 
 const PHASE_LABELS = {
   idle: "Ready",
@@ -28,6 +30,8 @@ export function RoundControlCard({
   startHint,
   onStart,
   config,
+  client,
+  hideStart = false,
 }: {
   title: string
   description: string
@@ -38,11 +42,16 @@ export function RoundControlCard({
   onStart: () => void
   /** Used by the room preview to label members. */
   config: MatchConfig
+  client: ZoomClient
+  /** For activities started elsewhere (e.g. Spectrum line's grouping buttons). */
+  hideStart?: boolean
 }) {
   const { state, active } = runner
   const now = useNow(state?.phase === "open")
   const left = state?.phase === "open" && state.endsAt ? state.endsAt - now : state?.remainingMs ?? null
   const roundMs = minutes * 60_000
+  const phaseLabel =
+    state?.kind === "main" && state.phase === "open" ? "In the main room" : state ? PHASE_LABELS[state.phase] : ""
 
   return (
     <Card>
@@ -55,7 +64,9 @@ export function RoundControlCard({
         <CardContent className="space-y-3" aria-live="polite">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-sm font-medium">
-              Round {state.round + 1} of {state.total} · {PHASE_LABELS[state.phase]}
+              {state.label ? `Step ${state.round + 1} of ${state.total} · ${state.label}` : `Round ${state.round + 1} of ${state.total}`}
+              {" · "}
+              {phaseLabel}
             </p>
             {left !== null && (
               <p className="font-mono text-2xl tabular-nums" aria-label={`${formatClock(left)} left`}>
@@ -97,6 +108,7 @@ export function RoundControlCard({
 
       <CardFooter className="flex-col items-stretch gap-3">
         {!active ? (
+          !hideStart && (
           <>
             <Button size="lg" className="h-12 w-full text-base" disabled={!canStart} onClick={onStart}>
               <Sparkles aria-hidden="true" />
@@ -104,6 +116,7 @@ export function RoundControlCard({
             </Button>
             {startHint && <p className="text-sm text-muted-foreground">{startHint}</p>}
           </>
+          )
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {state?.phase === "paused" ? (
@@ -136,7 +149,10 @@ export function RoundControlCard({
           </div>
         )}
 
-        {state?.plan && state.plan.rooms.length > 0 && active && <RoomPlan plan={state.plan} config={config} />}
+        {active && state && <RoomVisitor client={client} roomIds={state.roomIds} />}
+        {state?.plan && state.plan.rooms.length > 0 && active && state.kind === "rooms" && (
+          <RoomPlan plan={state.plan} config={config} />
+        )}
       </CardFooter>
     </Card>
   )

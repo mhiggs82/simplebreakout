@@ -6,6 +6,9 @@ import { encode, type Message, type RoundInfo } from "@/lib/messages"
 import { orchestrate, type AssignmentFailure } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
+/** `rooms` steps open breakout rooms; `main` steps run in the main room (e.g. silent reflection). */
+export type StepKind = "rooms" | "main"
+
 export type RunnerPhase = "idle" | "preparing" | "open" | "paused" | "closing" | "done" | "error"
 
 export interface RunnerState {
@@ -18,7 +21,13 @@ export interface RunnerState {
   /** Time left when paused. */
   remainingMs: number | null
   prompt?: string
+  /** Whether this step uses breakout rooms or happens in the main room. */
+  kind: StepKind
+  /** Short step name, e.g. "Pairs". */
+  label?: string
   plan: MatchPlan | null
+  /** Room name → breakout room id for the current step (for visiting rooms). */
+  roomIds: Record<string, string>
   failures: AssignmentFailure[]
   /** People who couldn't be seated in their pinned room. */
   seatErrors: string[]
@@ -35,11 +44,20 @@ export interface RoundRunnerOptions {
   client: ZoomClient
   activity: RoundInfo["activity"]
   rounds: number
-  minutes: number
+  /** Minutes per round, or per step when steps differ (1-2-4-All). */
+  minutes: number | ((round: number) => number)
   settings: ConfigureBreakoutRoomsOptions
-  /** Builds the next round from the people currently in the meeting. */
-  plan: (round: number, history: History) => MatchPlan
+  /**
+   * Builds the next round from the people currently in the meeting.
+   * `previous` is the last rooms step's plan, for steps that build on it.
+   */
+  plan: (round: number, history: History, previous: MatchPlan | null) => MatchPlan
   prompt: (round: number) => string | undefined
+  /** Defaults to every step using rooms. */
+  kind?: (round: number) => StepKind
+  label?: (round: number) => string | undefined
+  /** Steps where attendees can send a key insight to the harvest board. */
+  harvest?: (round: number) => boolean
   /** Pinned people the SDK can't assign (hosts / co-hosts), seated via their own app. */
   seats?: (round: number) => Seat[]
   selfUuid: string
@@ -65,6 +83,8 @@ function describe(err: unknown): string {
 export class RoundRunner {
   private state: RunnerState
   private history: History = emptyHistory()
+  /** The most recent rooms step's plan. */
+  private previous: MatchPlan | null = null
   private timers: ReturnType<typeof setTimeout>[] = []
   /** Bumped on end() so in-flight async work from an old run stops. */
   private generation = 0
@@ -79,7 +99,9 @@ export class RoundRunner {
       total: options.rounds,
       endsAt: null,
       remainingMs: null,
+      kind: "rooms",
       plan: null,
+      roomIds: {},
       failures: [],
       seatErrors: [],
     }
@@ -107,6 +129,9 @@ export class RoundRunner {
         total: this.state.total,
         prompt: this.state.prompt,
         endsAt: this.state.phase === "open" ? this.state.endsAt : null,
+        kind: this.state.kind,
+        label: this.state.label,
+        harvest: this.opts.harvest?.(this.state.round) ?? false,
       },
     })
   }
@@ -132,16 +157,35 @@ export class RoundRunner {
   async start(): Promise<void> {
     if (this.state.phase !== "idle" && this.state.phase !== "done" && this.state.phase !== "error") return
     this.history = emptyHistory()
+    this.previous = null
     this.set({ round: 0, failures: [], seatErrors: [], error: undefined })
     await this.runRound(0)
+  }
+
+  private minutesFor(round: number): number {
+    const { minutes } = this.opts
+    return typeof minutes === "function" ? minutes(round) : minutes
+  }
+
+  /** Main-room steps: just a timer and a prompt, no rooms. */
+  private openMainStep(endsAt: number) {
+    this.set({ phase: "open", endsAt, plan: null, roomIds: {} })
+    this.broadcastRound()
+    this.schedule(endsAt)
   }
 
   private async runRound(round: number) {
     const generation = this.generation
     const prompt = this.opts.prompt(round)
-    this.set({ phase: "preparing", round, prompt, endsAt: null, remainingMs: null })
+    const kind = this.opts.kind?.(round) ?? "rooms"
+    const label = this.opts.label?.(round)
+    this.set({ phase: "preparing", round, prompt, kind, label, endsAt: null, remainingMs: null })
+    if (kind === "main") {
+      this.openMainStep(Date.now() + this.minutesFor(round) * 60_000)
+      return
+    }
     try {
-      const plan = this.opts.plan(round, this.history)
+      const plan = this.opts.plan(round, this.history, this.previous)
       this.set({ plan })
       if (plan.rooms.length === 0) throw new Error(plan.warnings[0] ?? "There is nobody to match.")
 
@@ -153,10 +197,11 @@ export class RoundRunner {
       }
 
       const seatErrors = await this.seatPinned(round, result.roomIds)
-      const endsAt = Date.now() + this.opts.minutes * 60_000
+      const endsAt = Date.now() + this.minutesFor(round) * 60_000
       this.set({
         phase: "open",
         endsAt,
+        roomIds: result.roomIds,
         failures: [...this.state.failures, ...result.failures],
         seatErrors,
       })
@@ -218,7 +263,8 @@ export class RoundRunner {
 
   /** Stop after closing any open rooms. */
   async end() {
-    const wasRunning = this.state.phase === "open" || this.state.phase === "paused"
+    const wasRunning =
+      this.state.kind === "rooms" && (this.state.phase === "open" || this.state.phase === "paused")
     this.generation++
     this.clearTimers()
     if (wasRunning) {
@@ -232,15 +278,20 @@ export class RoundRunner {
   private async closeRound() {
     const generation = this.generation
     this.clearTimers()
-    this.set({ phase: "closing", endsAt: null, remainingMs: null })
+    this.set({ phase: "closing", endsAt: null, remainingMs: null, roomIds: {} })
     try {
-      await this.opts.client.closeBreakoutRooms().catch((err) => {
-        // Rooms may already have been closed from Zoom's own controls.
-        if (!/not open/i.test(describe(err))) throw err
-      })
-      await this.waitUntilClosed(generation)
-      if (generation !== this.generation) return
-      if (this.state.plan) recordRound(this.history, this.state.plan)
+      if (this.state.kind === "rooms") {
+        await this.opts.client.closeBreakoutRooms().catch((err) => {
+          // Rooms may already have been closed from Zoom's own controls.
+          if (!/not open/i.test(describe(err))) throw err
+        })
+        await this.waitUntilClosed(generation)
+        if (generation !== this.generation) return
+        if (this.state.plan) {
+          recordRound(this.history, this.state.plan)
+          this.previous = this.state.plan
+        }
+      }
 
       const next = this.state.round + 1
       if (next < this.state.total) {

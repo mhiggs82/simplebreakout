@@ -142,3 +142,42 @@ export function RoundFields({
 }
 
 export { NumberField }
+
+/** Minutes + prompt for one named step (1-2-4-All, Think-Pair-Share). */
+export function StepFields({
+  title,
+  where,
+  value,
+  onChange,
+}: {
+  title: string
+  where: string
+  value: { minutes: number; prompt: string }
+  onChange: (next: { minutes: number; prompt: string }) => void
+}) {
+  const id = useId()
+  return (
+    <fieldset className="space-y-2 rounded-lg border p-3">
+      <legend className="px-1 text-sm font-medium">
+        {title} <span className="font-normal text-muted-foreground">· {where}</span>
+      </legend>
+      <NumberField
+        label="Minutes"
+        value={value.minutes}
+        min={1}
+        max={60}
+        onChange={(minutes) => onChange({ ...value, minutes })}
+      />
+      <Label htmlFor={id} className="sr-only">
+        {title} prompt
+      </Label>
+      <Input
+        id={id}
+        value={value.prompt}
+        maxLength={200}
+        placeholder="Prompt shown to everyone"
+        onChange={(e) => onChange({ ...value, prompt: e.target.value })}
+      />
+    </fieldset>
+  )
+}

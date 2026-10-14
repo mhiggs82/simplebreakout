@@ -184,3 +184,77 @@ export function planCafeRound(
 
   return { rooms: rooms.map(({ name, members }) => ({ name, members })), warnings }
 }
+
+/** Add people to the smallest groups, one at a time. */
+function fillSmallest(groups: Candidate[][], people: Candidate[]) {
+  for (const person of people) {
+    groups.reduce((min, g) => (g.length < min.length ? g : min)).push(person)
+  }
+}
+
+/**
+ * 1-2-4-All: merge each group from the previous step with the next one
+ * (pairs → fours). People who weren't in the previous step fill the smallest
+ * groups; people who left are dropped.
+ */
+export function mergeGroups(previous: MatchPlan | null, people: Candidate[], rng: Rng = Math.random): MatchPlan {
+  if (people.length < MIN_GROUP_SIZE) {
+    return { rooms: [], warnings: ["At least 2 participants are needed to make rooms."] }
+  }
+  const present = new Map(people.map((p) => [p.uuid, p]))
+  const placed = new Set<string>()
+  const earlier = (previous?.rooms ?? [])
+    .map((room) => room.members.flatMap((m) => (present.has(m.uuid) ? [present.get(m.uuid)!] : [])))
+    .filter((g) => g.length > 0)
+  earlier.forEach((g) => g.forEach((m) => placed.add(m.uuid)))
+
+  const groups: Candidate[][] = []
+  for (let i = 0; i + 1 < earlier.length; i += 2) groups.push([...earlier[i], ...earlier[i + 1]])
+  if (earlier.length % 2 === 1) {
+    // An odd group out joins the smallest merged group (or stands alone if it's the only one).
+    if (groups.length > 0) fillSmallest(groups, earlier.at(-1)!)
+    else groups.push(earlier.at(-1)!)
+  }
+  const newcomers = shuffle(people.filter((p) => !placed.has(p.uuid)), rng)
+  if (groups.length === 0) groups.push(newcomers)
+  else fillSmallest(groups, newcomers)
+
+  return {
+    rooms: groups.filter((g) => g.length > 0).map((members, i) => ({ name: `Group ${i + 1}`, members })),
+    warnings: [],
+  }
+}
+
+/** Gallery walk: form groups once; there's one group per station at most. */
+export function formGalleryGroups(people: Candidate[], stations: number, rng: Rng = Math.random): Candidate[][] {
+  const count = Math.max(1, Math.min(stations, Math.floor(people.length / MIN_GROUP_SIZE)))
+  const groups: Candidate[][] = Array.from({ length: count }, () => [])
+  shuffle(people, rng).forEach((person, i) => groups[i % count].push(person))
+  return groups
+}
+
+/**
+ * Gallery walk: groups stay together and move one station per round
+ * (group g is at station (g + round) mod stations). People who joined late
+ * fill the smallest group; people who left are dropped.
+ */
+export function planGalleryRound(
+  stations: string[],
+  groups: Candidate[][],
+  people: Candidate[],
+  round: number,
+): MatchPlan {
+  if (stations.length === 0) return { rooms: [], warnings: ["Add at least one station."] }
+  const present = new Map(people.map((p) => [p.uuid, p]))
+  const current = groups.map((g) => g.flatMap((m) => (present.has(m.uuid) ? [present.get(m.uuid)!] : [])))
+  const known = new Set(current.flat().map((m) => m.uuid))
+  if (current.length > 0) fillSmallest(current, people.filter((p) => !known.has(p.uuid)))
+
+  const names = uniqueNames(stations.map((name) => ({ name, members: [] as Candidate[] }))).map((r) => r.name)
+  const rooms = current
+    .map((members, g) => ({ name: names[(g + round) % names.length], members }))
+    .filter((room) => room.members.length > 0)
+  const warnings =
+    round >= names.length ? ["Groups have now visited every station; they're starting a second lap."] : []
+  return { rooms, warnings }
+}

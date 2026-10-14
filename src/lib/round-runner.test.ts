@@ -118,4 +118,37 @@ describe("RoundRunner", () => {
     await runner.start()
     expect(runner.current).toMatchObject({ phase: "error", error: "Nobody here." })
   })
+
+  it("runs main-room steps without rooms and builds on the previous rooms step", async () => {
+    const seenPrevious: (string | null)[] = []
+    const { runner, client, sent } = setup({
+      rounds: 3,
+      minutes: (round) => [1, 2, 4][round],
+      kind: (round) => (round === 0 ? "main" : "rooms"),
+      label: (round) => ["On your own", "Pairs", "Fours"][round],
+      harvest: (round) => round === 2,
+      plan: (_round, history, previous) => {
+        seenPrevious.push(previous ? previous.rooms.map((r) => r.name).join() : null)
+        return planSpeedRound(people, 2, history)
+      },
+    })
+    const create = vi.spyOn(client, "createBreakoutRooms")
+    void runner.start()
+    await settle()
+    expect(runner.current).toMatchObject({ phase: "open", kind: "main", label: "On your own", roomIds: {} })
+    expect(create).not.toHaveBeenCalled()
+    expect(runner.current.endsAt! - Date.now()).toBeLessThanOrEqual(60_000)
+
+    runner.skip()
+    await settle()
+    expect(runner.current).toMatchObject({ round: 1, kind: "rooms", label: "Pairs" })
+    expect(Object.keys(runner.current.roomIds)).toHaveLength(3)
+
+    runner.skip()
+    await settle()
+    expect(runner.current).toMatchObject({ round: 2, label: "Fours" })
+    expect(seenPrevious).toEqual([null, "Room 1,Room 2,Room 3"])
+    const lastRound = sent.filter((m) => m?.type === "round").at(-1)
+    expect(lastRound).toMatchObject({ round: { kind: "rooms", label: "Fours", harvest: true } })
+  })
 })
