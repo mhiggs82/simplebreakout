@@ -331,7 +331,7 @@ function PollCard({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <Slider
-                aria-label={`Your position from 1 (${poll.labels?.[0] ?? "low"}) to 10 (${poll.labels?.[1] ?? "high"})`}
+                thumbLabel={`Your position from 1 (${poll.labels?.[0] ?? "low"}) to 10 (${poll.labels?.[1] ?? "high"})`}
                 min={1}
                 max={10}
                 step={1}

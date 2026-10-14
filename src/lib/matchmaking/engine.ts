@@ -271,3 +271,35 @@ export function buildMatchPlan(
 
   return { rooms: uniqueNames(applyLabels(rooms.filter((r) => r.members.length > 0), config.roomLabels)), warnings }
 }
+
+/**
+ * Bring a previewed plan up to date with who is in the meeting now: people
+ * who left are dropped and newcomers fill the smallest rooms, so the rooms
+ * the host already looked at stay recognisable.
+ */
+export function reconcilePlan(
+  plan: MatchPlan,
+  people: Candidate[],
+): { plan: MatchPlan; joined: number; left: number } {
+  const present = new Map(people.map((p) => [p.uuid, p]))
+  let left = 0
+  const rooms = plan.rooms.map((room) => ({
+    ...room,
+    members: room.members.flatMap((m) => {
+      const now = present.get(m.uuid)
+      if (!now) left++
+      return now ? [now] : []
+    }),
+  }))
+  const placed = new Set(rooms.flatMap((r) => r.members.map((m) => m.uuid)))
+  const newcomers = people.filter((p) => !placed.has(p.uuid))
+  for (const person of newcomers) {
+    if (rooms.length === 0) break
+    rooms.reduce((min, r) => (r.members.length < min.members.length ? r : min)).members.push(person)
+  }
+  return {
+    plan: { ...plan, rooms: rooms.filter((r) => r.members.length > 0) },
+    joined: rooms.length ? newcomers.length : 0,
+    left,
+  }
+}

@@ -30,6 +30,7 @@ describe("pulse", () => {
   it("pairs the lowest with the highest", () => {
     const points = [1, 9, 4, 6, 2, 10].map((value, i) => ({ person: person(i), value }))
     const plan = pairOpposites(points, [], rng)
+    expect(plan.warnings.join(" ")).toMatch(/1 pair\(s\)/) // 4↔6
     const values = plan.rooms.map((r) => r.members.map((m) => points.find((p) => p.person === m)!.value).sort((a, b) => a - b))
     expect(values).toEqual([[1, 10], [2, 9], [4, 6]])
   })
@@ -39,7 +40,13 @@ describe("pulse", () => {
     const plan = pairOpposites(points, [person(9)], rng)
     expect(plan.rooms).toHaveLength(1)
     expect(plan.rooms[0].members).toHaveLength(4)
+    expect(plan.rooms[0].name).toBe("Pair 1 · 1↔10")
     expect(plan.warnings).toHaveLength(1)
+  })
+
+  it("warns when everyone stands close together", () => {
+    const points = [5, 6, 6, 7].map((value, i) => ({ person: person(i), value }))
+    expect(pairOpposites(points, [], rng).warnings.join(" ")).toMatch(/2 pair\(s\) are within 2 points/)
   })
 
   it("groups similar positions and names rooms by range", () => {

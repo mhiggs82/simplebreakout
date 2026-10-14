@@ -30,6 +30,15 @@ const MOCK_NAMES = [
   "Pedro Santos", "Quinn Murphy", "Rania Haddad", "Sofia Novak", "Tariq Aziz",
 ]
 
+const FIRST = ["Amara", "Ben", "Chen", "Diego", "Elif", "Fatima", "Grace", "Hugo", "Isabel", "Jonas", "Keiko", "Liam", "Maya", "Noah", "Olivia", "Pedro", "Quinn", "Rania", "Sofia", "Tariq", "Uma", "Victor", "Wen", "Xavier", "Yara", "Zane"]
+const LAST = ["Okafor", "Carter", "Wei", "Alvarez", "Yilmaz", "Al-Sayed", "Kim", "Martin", "Rossi", "Berg", "Tanaka", "O'Brien", "Patel", "Cohen", "Brown", "Santos", "Murphy", "Haddad", "Novak", "Aziz"]
+
+/** The original 20 names first, then generated ones for bigger meetings. */
+function mockName(i: number): string {
+  if (i < MOCK_NAMES.length) return MOCK_NAMES[i]
+  return `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${Math.floor(i / 100) || ""}`.trim()
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const ok = { message: "Success" as const }
 
@@ -66,6 +75,14 @@ const MOCK_INSIGHTS = [
 
 export interface MockOptions {
   scenario?: MockScenario
+  /** Other people in the meeting (default 20). */
+  people?: number
+  /** How many of them are co-hosts. */
+  cohosts?: number
+  /** People keep joining and leaving. */
+  churn?: boolean
+  /** Some SDK calls fail, like on a flaky connection. */
+  chaos?: boolean
   /** How long rooms take to close after closeBreakoutRooms (Zoom's countdown). */
   closeDelayMs?: number
 }
@@ -79,21 +96,38 @@ export interface MockOptions {
 export function createMockZoomClient(
   self: Participant,
   asAttendee: boolean,
-  { scenario = "questions", closeDelayMs = 1500 }: MockOptions = {},
+  { scenario = "questions", closeDelayMs = 1500, people = MOCK_NAMES.length, cohosts = 0, churn = false, chaos = false }: MockOptions = {},
 ): ZoomClient {
   const listeners = new Map<string, Set<Listener>>()
   const emit = (event: string, data: unknown) =>
     listeners.get(event)?.forEach((listener) => listener(data))
 
-  const participants: Participant[] = [
-    self,
-    ...MOCK_NAMES.map((screenName, i) => ({
-      screenName,
-      participantId: String(i + 1),
-      participantUUID: `mock-${i + 1}`,
-      role: "attendee",
-    })),
-  ]
+  const makePerson = (i: number): Participant => ({
+    screenName: mockName(i),
+    participantId: String(i + 1),
+    participantUUID: `mock-${i + 1}`,
+    role: i < cohosts ? "coHost" : "attendee",
+  })
+  const participants: Participant[] = [self, ...Array.from({ length: people }, (_, i) => makePerson(i))]
+  let nextPerson = people
+  const flaky = () => chaos && Math.random() < 0.1
+
+  if (churn && !asAttendee) {
+    // Every few seconds someone leaves or someone new joins.
+    setInterval(() => {
+      const leavers = participants.slice(1 + cohosts)
+      if (Math.random() < 0.5 && leavers.length > 2) {
+        const gone = pick(leavers)
+        participants.splice(participants.indexOf(gone), 1)
+        for (const room of rooms.rooms) {
+          room.participants = room.participants?.filter((p) => p.participantUUID !== gone.participantUUID)
+        }
+      } else {
+        participants.push(makePerson(nextPerson++))
+      }
+      emit("onParticipantChange", { timestamp: Date.now(), participants: [] })
+    }, 2500)
+  }
   let rooms: BreakoutRoomsResponse = { rooms: [], state: "closed", unassigned: [] }
   let spotlights: string[] = []
   /** room id → assigned participant UUIDs */
@@ -208,10 +242,10 @@ export function createMockZoomClient(
     )
   }
 
-  function raiseSomeHands() {
+  function raiseSomeHands(onStage: string[]) {
     if (handsRaised) return
     handsRaised = true
-    participants.slice(5, 8).forEach((p, i) =>
+    participants.slice(1).filter((p) => !onStage.includes(p.participantUUID)).slice(0, 3).forEach((p, i) =>
       setTimeout(
         () => emit("onMessage", { timestamp: Date.now(), participantUUID: p.participantUUID, payload: { t: "sb1/raise" } }),
         800 + i * 700,
@@ -222,7 +256,7 @@ export function createMockZoomClient(
   return {
     async getMeetingParticipants() {
       await delay(150)
-      return { participants }
+      return { participants: [...participants] }
     },
     async createBreakoutRooms({ names, numberOfRooms }) {
       await delay(300)
@@ -248,6 +282,9 @@ export function createMockZoomClient(
     },
     async assignParticipantToBreakoutRoom({ uuid, participantUUID }) {
       await delay(40)
+      if (flaky() || !participants.some((p) => p.participantUUID === participantUUID)) {
+        throw { code: "10094", message: "The id of the user is incorrect." }
+      }
       if (uuid && participantUUID) assigned.set(uuid, [...(assigned.get(uuid) ?? []), participantUUID])
       return ok
     },
@@ -270,8 +307,9 @@ export function createMockZoomClient(
     },
     async sendMessage({ payload }) {
       await delay(50)
+      if (flaky()) throw { code: "10038", message: "Failed to post message." }
       if (!asAttendee && payload.t === "sb1/config") answerQuestionnaire(payload)
-      if (!asAttendee && payload.t === "sb1/fishbowl") raiseSomeHands()
+      if (!asAttendee && payload.t === "sb1/fishbowl") raiseSomeHands((payload.i as string[]) ?? [])
       if (!asAttendee && payload.t === "sb1/poll") vote(payload)
       if (!asAttendee && payload.t === "sb1/round" && payload.h === 1 && payload.k !== "m") sendInsights()
       return ok

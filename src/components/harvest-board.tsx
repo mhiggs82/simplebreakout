@@ -16,11 +16,11 @@ export function HarvestBoard({
 }: {
   items: HarvestEntry[]
   onRemove: (id: number) => void
-  onShare: () => Promise<void>
+  onShare: () => Promise<{ shared: number; total: number }>
   title?: string
   description?: string
 }) {
-  const [shared, setShared] = useState(0)
+  const [shared, setShared] = useState<{ shared: number; total: number } | null>(null)
   const byRoom = new Map<string, HarvestEntry[]>()
   for (const item of items) byRoom.set(item.room, [...(byRoom.get(item.room) ?? []), item])
 
@@ -60,15 +60,21 @@ export function HarvestBoard({
           </ul>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex-col items-stretch gap-2">
         <Button
           variant="outline"
           className="w-full"
           disabled={items.length === 0}
-          onClick={() => void onShare().then(() => setShared(items.length))}
+          onClick={() => void onShare().then(setShared)}
         >
-          <Send /> {shared > 0 && shared === items.length ? "Shared with everyone" : "Share with everyone"}
+          <Send /> {shared && shared.total === items.length ? "Shared with everyone" : "Share with everyone"}
         </Button>
+        {shared && shared.shared < shared.total && (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            Zoom limits message size, so attendees see the latest {shared.shared} of {shared.total}. Screen-share this
+            board to show them all.
+          </p>
+        )}
       </CardFooter>
     </Card>
   )

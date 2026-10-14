@@ -26,6 +26,8 @@ export interface OrchestrationResult {
 
 export class OrchestrationError extends Error {}
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function describe(err: unknown): string {
   if (err instanceof Error) return err.message
   if (typeof err === "object" && err && "message" in err) return String(err.message)
@@ -44,6 +46,7 @@ export async function orchestrate(
   plan: MatchPlan,
   settings: ConfigureBreakoutRoomsOptions,
   onProgress: (progress: OrchestrationProgress) => void = () => {},
+  retryDelayMs = 600,
 ): Promise<OrchestrationResult> {
   const total = plan.rooms.reduce((sum, room) => sum + room.members.length, 0)
   if (plan.rooms.length === 0) throw new OrchestrationError("There are no rooms to create.")
@@ -65,19 +68,29 @@ export async function orchestrate(
   onProgress({ step: "configuring", assigned: 0, total })
   await client.configureBreakoutRooms(settings)
 
-  const failures: AssignmentFailure[] = []
+  let failures: AssignmentFailure[] = []
   let assigned = 0
+  const pending: { uuid: string | undefined; room: string; member: (typeof plan.rooms)[number]["members"][number] }[] =
+    plan.rooms.flatMap((room, index) => {
+      // Fall back to position if the client normalised a room name.
+      const uuid = idByName.get(room.name) ?? created.rooms[index]?.breakoutRoomId
+      return room.members.map((member) => ({ uuid, room: room.name, member }))
+    })
   onProgress({ step: "assigning", assigned, total })
-  for (const [index, room] of plan.rooms.entries()) {
-    // Fall back to position if the client normalised a room name.
-    const uuid = idByName.get(room.name) ?? created.rooms[index]?.breakoutRoomId
-    for (const member of room.members) {
+
+  // Assign everyone, then give failures one more try: brief network blips
+  // and people rejoining with a new connection often succeed the second time.
+  for (let attempt = 0; attempt < 2 && pending.length > 0; attempt++) {
+    if (attempt > 0) await sleep(retryDelayMs)
+    failures = []
+    for (const item of pending.splice(0)) {
       try {
-        if (!uuid) throw new Error("Room was not created")
-        await client.assignParticipantToBreakoutRoom({ uuid, participantUUID: member.uuid })
+        if (!item.uuid) throw new Error("Room was not created")
+        await client.assignParticipantToBreakoutRoom({ uuid: item.uuid, participantUUID: item.member.uuid })
         assigned++
       } catch (err) {
-        failures.push({ name: member.name, room: room.name, error: describe(err) })
+        pending.push(item)
+        failures.push({ name: item.member.name, room: item.room, error: describe(err) })
       }
       onProgress({ step: "assigning", assigned, total })
     }

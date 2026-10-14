@@ -90,7 +90,10 @@ export function RoundControlCard({
           )}
           {[...state.seatErrors, ...state.failures.map((f) => `${f.name} → ${f.room}: ${f.error}`)].length > 0 && (
             <details className="text-sm text-destructive">
-              <summary>Some people couldn't be placed</summary>
+              <summary>
+                {state.failures.length + state.seatErrors.length} couldn't be placed this round. Usually they've just
+                left or are reconnecting; they'll be included next round.
+              </summary>
               <ul className="mt-1 list-disc pl-5">
                 {state.seatErrors.map((e) => (
                   <li key={e}>{e}</li>
@@ -151,7 +154,7 @@ export function RoundControlCard({
 
         {active && state && <RoomVisitor client={client} roomIds={state.roomIds} />}
         {state?.plan && state.plan.rooms.length > 0 && active && state.kind === "rooms" && (
-          <RoomPlan plan={state.plan} config={config} />
+          <RoomPlan plan={state.plan} config={config} seats={state.seats} />
         )}
       </CardFooter>
     </Card>

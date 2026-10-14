@@ -67,7 +67,13 @@ export function pairOpposites(points: SpectrumPoint[], unanswered: Candidate[] =
   const sorted = shuffle(points, rng).sort((a, b) => a.value - b.value)
   if (sorted.length + unanswered.length < 2) return { rooms: [], warnings: ["At least 2 participants are needed to make rooms."] }
   const rooms: Candidate[][] = []
-  for (let i = 0, j = sorted.length - 1; i < j; i++, j--) rooms.push([sorted[i].person, sorted[j].person])
+  const spans: string[] = []
+  let close = 0
+  for (let i = 0, j = sorted.length - 1; i < j; i++, j--) {
+    rooms.push([sorted[i].person, sorted[j].person])
+    spans.push(`${sorted[i].value}↔${sorted[j].value}`)
+    if (sorted[j].value - sorted[i].value <= 2) close++
+  }
   if (sorted.length % 2 === 1) {
     const middle = sorted[(sorted.length - 1) / 2].person
     if (rooms.length > 0) rooms[Math.floor((rooms.length - 1) / 2)].push(middle)
@@ -75,9 +81,17 @@ export function pairOpposites(points: SpectrumPoint[], unanswered: Candidate[] =
   }
   if (rooms.length === 0) rooms.push([])
   placeUnanswered(rooms, unanswered, rng)
+  // Name rooms by the positions they span (e.g. "Pair 1 · 2↔9") so the host
+  // can see at a glance how far apart each pair really is.
+  const warnings = [
+    ...(unanswered.length > 0 ? [`${unanswered.length} participant(s) didn't answer and were added to rooms.`] : []),
+    ...(close > 0
+      ? [`${close} pair(s) are within 2 points of each other: most people lean the same way. Group similar may suit better.`]
+      : []),
+  ]
   return {
-    rooms: rooms.map((members, i) => ({ name: `Pair ${i + 1}`, members })),
-    warnings: unanswered.length > 0 ? [`${unanswered.length} participant(s) didn't answer and were added to rooms.`] : [],
+    rooms: rooms.map((members, i) => ({ name: spans[i] ? `Pair ${i + 1} · ${spans[i]}` : `Pair ${i + 1}`, members })),
+    warnings,
   }
 }
 

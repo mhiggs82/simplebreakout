@@ -31,6 +31,8 @@ export interface RunnerState {
   failures: AssignmentFailure[]
   /** People who couldn't be seated in their pinned room. */
   seatErrors: string[]
+  /** Hosts / co-hosts joining their pinned room from their own app this step. */
+  seats: Seat[]
   error?: string
 }
 
@@ -38,6 +40,8 @@ export interface RunnerState {
 export interface Seat {
   participantUUID: string
   roomName: string
+  /** Shown in the room plan, since these people aren't in the plan itself. */
+  name?: string
 }
 
 export interface RoundRunnerOptions {
@@ -104,6 +108,7 @@ export class RoundRunner {
       roomIds: {},
       failures: [],
       seatErrors: [],
+      seats: [],
     }
   }
 
@@ -185,6 +190,18 @@ export class RoundRunner {
       return
     }
     try {
+      // Rooms from a run that was just ended may still be in Zoom's closing countdown.
+      if (round === 0) {
+        const list = await this.opts.client.getBreakoutRoomList().catch(() => null)
+        if (list?.state === "open") {
+          this.set({ label: "Waiting for earlier rooms to close" })
+          await this.waitUntilClosed(generation, 30_000).catch(() => {
+            throw new Error("Breakout rooms are still open. Close them in Zoom, then start again.")
+          })
+          if (generation !== this.generation) return
+          this.set({ label })
+        }
+      }
       const plan = this.opts.plan(round, this.history, this.previous)
       this.set({ plan })
       if (plan.rooms.length === 0) throw new Error(plan.warnings[0] ?? "There is nobody to match.")
@@ -196,13 +213,15 @@ export class RoundRunner {
         return
       }
 
-      const seatErrors = await this.seatPinned(round, result.roomIds)
+      const seats = (this.opts.seats?.(round) ?? []).filter((s) => result.roomIds[s.roomName])
+      const seatErrors = await this.seatPinned(seats, result.roomIds)
       const endsAt = Date.now() + this.minutesFor(round) * 60_000
       this.set({
         phase: "open",
         endsAt,
         roomIds: result.roomIds,
-        failures: [...this.state.failures, ...result.failures],
+        seats,
+        failures: result.failures,
         seatErrors,
       })
       this.broadcastRound()
@@ -212,9 +231,9 @@ export class RoundRunner {
     }
   }
 
-  private async seatPinned(round: number, roomIds: Record<string, string>): Promise<string[]> {
+  private async seatPinned(seats: Seat[], roomIds: Record<string, string>): Promise<string[]> {
     const errors: string[] = []
-    for (const seat of this.opts.seats?.(round) ?? []) {
+    for (const seat of seats) {
       const roomUuid = roomIds[seat.roomName]
       if (!roomUuid) continue
       if (seat.participantUUID === this.opts.selfUuid) {
@@ -271,7 +290,7 @@ export class RoundRunner {
       this.set({ phase: "closing", endsAt: null })
       await this.opts.client.closeBreakoutRooms().catch(() => {})
     }
-    this.set({ phase: "done", endsAt: null, remainingMs: null })
+    this.set({ phase: "done", endsAt: null, remainingMs: null, label: this.opts.label?.(this.state.round) })
     this.broadcast({ type: "ended" })
   }
 
@@ -305,8 +324,8 @@ export class RoundRunner {
     }
   }
 
-  private async waitUntilClosed(generation: number) {
-    const deadline = Date.now() + this.opts.closeTimeoutMs
+  private async waitUntilClosed(generation: number, timeoutMs = this.opts.closeTimeoutMs) {
+    const deadline = Date.now() + timeoutMs
     while (generation === this.generation) {
       const list = await this.opts.client.getBreakoutRoomList().catch(() => null)
       if (list?.state === "closed") return

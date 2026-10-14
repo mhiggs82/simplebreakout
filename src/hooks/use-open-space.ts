@@ -32,6 +32,8 @@ function describe(err: unknown): string {
 export function useOpenSpace(client: ZoomClient, isSelfSeated: (uuid: string) => boolean) {
   const [phase, setPhase] = useState<Phase>("idle")
   const [tables, setTables] = useState<OpenTable[]>([])
+  /** Host only: who's at each table (room name → display names). Not broadcast. */
+  const [members, setMembers] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
   const session = useRef("")
   const lastSent = useRef("")
@@ -67,6 +69,7 @@ export function useOpenSpace(client: ZoomClient, isSelfSeated: (uuid: string) =>
         limit: limits.get(room.name) ?? 0,
       }))
       setTables(next)
+      setMembers(Object.fromEntries(list.rooms.map((r) => [r.name, (r.participants ?? []).map((p) => p.displayName)])))
       await broadcast(next)
     },
     [client, broadcast],
@@ -127,6 +130,7 @@ export function useOpenSpace(client: ZoomClient, isSelfSeated: (uuid: string) =>
   return {
     phase,
     tables,
+    members,
     error,
     open,
     close,

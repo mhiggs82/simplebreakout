@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { buildMatchPlan, MAX_ROOMS, roomCount } from "./engine"
+import { buildMatchPlan, MAX_ROOMS, reconcilePlan, roomCount } from "./engine"
 import type { Candidate, MatchConfig } from "./types"
 
 // Deterministic RNG (mulberry32) so shuffles are reproducible.
@@ -224,5 +224,30 @@ describe("room labels", () => {
     const input = people(4, () => ({ tags: { lang: "English", age: "0-4" } }))
     const plan = buildMatchPlan(input, { ...base, mode: "attributes", roomLabels: ["Lagos"] }, seeded(17))
     expect(plan.rooms[0].name).toBe("English · 0-4")
+  })
+})
+
+describe("reconcilePlan", () => {
+  it("drops leavers and seats newcomers in the smallest rooms", () => {
+    const everyone = people(8)
+    const plan = buildMatchPlan(everyone, { ...base, groupSize: 4 }, seeded(18))
+    const now = [...everyone.slice(1), { uuid: "late", name: "Late", tags: {} }]
+    const result = reconcilePlan(plan, now)
+    expect(result).toMatchObject({ joined: 1, left: 1 })
+    const uuids = result.plan.rooms.flatMap((r) => r.members.map((m) => m.uuid)).sort()
+    expect(uuids).toEqual(now.map((p) => p.uuid).sort())
+    expect(result.plan.rooms.map((r) => r.members.length)).toEqual([4, 4])
+  })
+})
+
+describe("withUniqueNames", () => {
+  it("numbers repeated display names", async () => {
+    const { withUniqueNames } = await import("@/hooks/use-host-session")
+    expect(withUniqueNames([{ name: "Sam" }, { name: "iPhone" }, { name: "Sam" }, { name: "Sam" }]).map((p) => p.name)).toEqual([
+      "Sam",
+      "iPhone",
+      "Sam (2)",
+      "Sam (3)",
+    ])
   })
 })

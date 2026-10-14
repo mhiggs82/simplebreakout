@@ -47,12 +47,29 @@ export function OpenSpaceCard({
         {live ? (
           <ul className="space-y-2" aria-label="Tables" aria-live="polite">
             {space.tables.map((table) => (
-              <li key={table.uuid} className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm">
-                <span className="truncate font-medium">{table.name}</span>
-                <Badge variant={table.limit && table.count >= table.limit ? "default" : "secondary"}>
-                  <Users aria-hidden="true" /> {table.count}
-                  {table.limit ? ` / ${table.limit}` : ""}
-                </Badge>
+              <li key={table.uuid} className="rounded-lg border p-3 text-sm">
+                <details>
+                  <summary className="flex cursor-pointer items-center justify-between gap-2">
+                    <span className="truncate font-medium">{table.name}</span>
+                    <Badge
+                      variant={
+                        table.limit && table.count > table.limit
+                          ? "destructive"
+                          : table.limit && table.count === table.limit
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
+                      <Users aria-hidden="true" /> {table.count}
+                      {table.limit ? ` / ${table.limit}` : ""}
+                      {table.limit > 0 && table.count > table.limit && " · over"}
+                      {table.limit > 0 && table.count === table.limit && " · full"}
+                    </Badge>
+                  </summary>
+                  <p className="mt-2 text-muted-foreground">
+                    {(space.members[table.name] ?? []).join(", ") || "Nobody here yet."}
+                  </p>
+                </details>
               </li>
             ))}
           </ul>

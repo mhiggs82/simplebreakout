@@ -17,9 +17,13 @@ export interface HarvestEntry extends HarvestItem {
 export function useHarvest(client: ZoomClient, plan: MatchPlan | null, collecting: boolean) {
   const [items, setItems] = useState<HarvestEntry[]>([])
   const nextId = useRef(1)
+  // Insights can arrive just after rooms close (e.g. sent as the pair step
+  // ends), so label them with the most recent plan that had rooms.
+  const lastRooms = useRef<MatchPlan | null>(null)
   const latest = useRef({ plan, collecting })
   useEffect(() => {
     latest.current = { plan, collecting }
+    if (plan && plan.rooms.length > 0) lastRooms.current = plan
   })
 
   useEffect(() => {
@@ -27,8 +31,8 @@ export function useHarvest(client: ZoomClient, plan: MatchPlan | null, collectin
       const message = decode(event.payload)
       const uuid = event.participantUUID
       if (message?.type !== "insight" || !uuid || !latest.current.collecting) return
-      const room =
-        latest.current.plan?.rooms.find((r) => r.members.some((m) => m.uuid === uuid))?.name ?? "Main room"
+      const plan = latest.current.plan?.rooms.length ? latest.current.plan : lastRooms.current
+      const room = plan?.rooms.find((r) => r.members.some((m) => m.uuid === uuid))?.name ?? "Main room"
       setItems((prev) => [
         ...prev,
         { id: nextId.current++, participantUUID: uuid, room, text: message.text.slice(0, 200) },
@@ -38,12 +42,14 @@ export function useHarvest(client: ZoomClient, plan: MatchPlan | null, collectin
     return () => client.removeEventListener("onMessage", onMessage)
   }, [client])
 
-  const share = useCallback(async () => {
+  /** Shares as many of the latest items as fit in one Zoom message. */
+  const share = useCallback(async (): Promise<{ shared: number; total: number }> => {
     const message = fitLatest(
       items.map(({ room, text }) => ({ room, text })),
       (kept) => ({ type: "harvest", items: kept }),
     )
     await client.sendMessage({ payload: encode(message) })
+    return { shared: message.type === "harvest" ? message.items.length : 0, total: items.length }
   }, [client, items])
 
   /** Gallery walk: send each station's notes to the group standing at it. */

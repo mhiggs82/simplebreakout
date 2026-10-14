@@ -53,6 +53,20 @@ export interface MeetingPerson {
   isSelf: boolean
 }
 
+/**
+ * Zoom display names aren't unique ("iPhone", two people called Sam), so
+ * repeats get a number: "Sam", "Sam (2)". Otherwise the host can't tell
+ * them apart when pinning hosts or reading room plans.
+ */
+export function withUniqueNames<T extends { name: string }>(people: T[]): T[] {
+  const seen = new Map<string, number>()
+  return people.map((person) => {
+    const n = (seen.get(person.name) ?? 0) + 1
+    seen.set(person.name, n)
+    return n === 1 ? person : { ...person, name: `${person.name} (${n})` }
+  })
+}
+
 type StoredAnswers = Answers & { source: "self" | "host" }
 
 const PRIVILEGED_ROLES = new Set(["host", "coHost"])
@@ -79,12 +93,14 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
     try {
       const { participants } = await client.getMeetingParticipants()
       setPeople(
-        participants.map((p) => ({
-          uuid: p.participantUUID,
-          name: p.screenName,
-          zoomRole: p.role,
-          isSelf: p.participantUUID === selfUuid,
-        })),
+        withUniqueNames(
+          participants.map((p) => ({
+            uuid: p.participantUUID,
+            name: p.screenName.trim() || "Unnamed",
+            zoomRole: p.role,
+            isSelf: p.participantUUID === selfUuid,
+          })),
+        ),
       )
       setParticipantsError(null)
     } catch (err) {

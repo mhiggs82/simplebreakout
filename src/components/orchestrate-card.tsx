@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import type { HostSession } from "@/hooks/use-host-session"
-import { buildMatchPlan } from "@/lib/matchmaking/engine"
+import { buildMatchPlan, reconcilePlan } from "@/lib/matchmaking/engine"
 import type { MatchPlan } from "@/lib/matchmaking/types"
 import { orchestrate, type OrchestrationProgress, type OrchestrationResult } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
@@ -46,13 +46,12 @@ export function OrchestrateCard({
   const [closing, setClosing] = useState(false)
   const { candidates, config } = session
 
-  // A preview only stays valid while the people and settings it was built from are unchanged.
-  const [previewed, setPreviewed] = useState<{ plan: MatchPlan; from: unknown[] } | null>(null)
-  const inputs = [candidates, config]
-  const preview =
-    previewed && previewed.from.every((input, i) => input === inputs[i]) ? previewed.plan : null
-  const setPreview = (plan: MatchPlan | null) =>
-    setPreviewed(plan ? { plan, from: inputs } : null)
+  // A preview stays valid while the matching settings are unchanged. People
+  // joining or leaving don't discard it: it's reconciled with who's here now.
+  const [previewed, setPreviewed] = useState<{ plan: MatchPlan; config: unknown } | null>(null)
+  const current = previewed && previewed.config === config ? reconcilePlan(previewed.plan, candidates) : null
+  const preview = current?.plan ?? null
+  const setPreview = (plan: MatchPlan | null) => setPreviewed(plan ? { plan, config } : null)
 
   const running = run.status === "running"
 
@@ -160,6 +159,12 @@ export function OrchestrateCard({
           )}
         </div>
 
+        {current && (current.joined > 0 || current.left > 0) && run.status !== "done" && (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Since this preview: {current.joined} joined, {current.left} left. Newcomers were added to the smallest
+            rooms. Reshuffle for a fresh plan.
+          </p>
+        )}
         {preview && preview.rooms.length > 0 && <RoomPlan plan={preview} config={config} />}
       </CardFooter>
     </Card>

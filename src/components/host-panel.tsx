@@ -125,7 +125,11 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
             const tables = latest.current.activities.cafe.tables
             const names = uniqueNames(tables.map((t) => ({ name: t.name, members: [] }))).map((r) => r.name)
             return tables.flatMap((t, i) =>
-              t.pinned.filter(selfSeated).map((participantUUID) => ({ participantUUID, roomName: names[i] })),
+              t.pinned.filter(selfSeated).map((participantUUID) => ({
+                participantUUID,
+                roomName: names[i],
+                name: latest.current.session.people.find((p) => p.uuid === participantUUID)?.name,
+              })),
             )
           },
         }
@@ -296,10 +300,17 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
 
       {isTimedSetup && (
         <>
-          {timedSetup(activity)}
-          <ParticipantsCard session={session} showAnswers={false} />
-          <RoomSettingsCard settings={settings} onChange={setSettings} timed />
-          {controls(activity)}
+          {runner.active ? (
+            // While running, the controls lead; the locked setup tucks away below.
+            controls(activity)
+          ) : (
+            <>
+              {timedSetup(activity)}
+              <ParticipantsCard session={session} showAnswers={false} />
+              <RoomSettingsCard settings={settings} onChange={setSettings} timed />
+              {controls(activity)}
+            </>
+          )}
           {HARVESTING.has(activity) && (
             <HarvestBoard
               items={harvest.items}
@@ -312,6 +323,15 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
                   : "Key insights groups send from their app panel. Shared automatically when everyone is back together."
               }
             />
+          )}
+          {runner.active && (
+            <details className="rounded-xl border bg-card p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Setup and participants (locked while running)</summary>
+              <div className="mt-4 space-y-4">
+                {timedSetup(activity)}
+                <ParticipantsCard session={session} showAnswers={false} />
+              </div>
+            </details>
           )}
         </>
       )}

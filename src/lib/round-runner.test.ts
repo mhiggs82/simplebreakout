@@ -151,4 +151,18 @@ describe("RoundRunner", () => {
     const lastRound = sent.filter((m) => m?.type === "round").at(-1)
     expect(lastRound).toMatchObject({ round: { kind: "rooms", label: "Fours", harvest: true } })
   })
+
+  it("waits for rooms from an ended run to finish closing before starting again", async () => {
+    const { runner, client } = setup()
+    void runner.start()
+    await settle()
+    await runner.end() // rooms now in their closing countdown
+    void runner.start()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(runner.current.phase).toBe("preparing")
+    expect(runner.current.label).toBe("Waiting for earlier rooms to close")
+    await settle()
+    expect(runner.current.phase).toBe("open")
+    expect((await client.getBreakoutRoomList()).state).toBe("open")
+  })
 })

@@ -45,7 +45,7 @@ export function useFishbowl(client: ZoomClient) {
           await client.removeParticipantSpotlights({ participantUUIDs: leaving }).catch((err) => failures.push(describe(err)))
         }
         const placed: string[] = stage.filter((uuid) => next.includes(uuid))
-        for (const uuid of next.filter((u) => !stage.includes(u)).slice(0, MAX_STAGE)) {
+        for (const uuid of [...new Set(next)].filter((u) => !stage.includes(u)).slice(0, MAX_STAGE)) {
           try {
             await client.addParticipantSpotlight({ participantUUID: uuid })
             placed.push(uuid)
@@ -53,7 +53,7 @@ export function useFishbowl(client: ZoomClient) {
             failures.push(describe(err))
           }
         }
-        const ordered = next.filter((uuid) => placed.includes(uuid))
+        const ordered = [...new Set(next)].filter((uuid) => placed.includes(uuid))
         setStage(ordered)
         // Whoever made it on stage no longer needs their hand up.
         setQueue((q) => q.filter((uuid) => !ordered.includes(uuid)))
@@ -68,7 +68,8 @@ export function useFishbowl(client: ZoomClient) {
 
   return {
     stage,
-    queue,
+    // Someone who raised a hand and was then put on stage isn't waiting any more.
+    queue: queue.filter((uuid) => !stage.includes(uuid)),
     busy,
     errors,
     putOnStage: apply,
