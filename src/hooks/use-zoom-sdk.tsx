@@ -124,7 +124,7 @@ async function initialize(): Promise<ZoomSdkState> {
   if (config.runningContext !== "inMeeting") {
     return {
       status: "error",
-      error: `SimpleBreakout runs inside a meeting (current context: ${config.runningContext}).`,
+      error: `Global Breakout runs inside a meeting (current context: ${config.runningContext}).`,
     }
   }
 

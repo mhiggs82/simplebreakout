@@ -1,4 +1,4 @@
-# SimpleBreakout
+# Global Breakout
 
 A one-click breakout room organizer for Zoom meetings, built as a **Zoom App** with the Zoom Apps SDK and **shadcn/ui**. Inspired by [Twine for Zoom](https://marketplace.zoom.us/apps/-cYA3VcaQduxP8suHFGXiA).
 
@@ -91,7 +91,7 @@ Themed tables with a **Table Host who stays put**, while everyone else ("travell
 * Name each table (e.g. *Sustainability*, *Scaling*) and pin a Table Host to it. The Table Host can be an attendee or a co-host. You stay in the main room and can visit any table.
 * Set the number of rotations, minutes per round, and one prompt per round.
 * Travellers are spread evenly. Each round prefers tables they haven't visited yet and people they haven't met.
-* **Hosts and co-hosts can't be moved by the Zoom SDK.** So when one of them is pinned, their own SimpleBreakout panel joins the table for them (`changeBreakoutRoom`). They need the app open.
+* **Hosts and co-hosts can't be moved by the Zoom SDK.** So when one of them is pinned, their own Global Breakout panel joins the table for them (`changeBreakoutRoom`). They need the app open.
 
 ### Speed Networking
 Short timed rounds of pairs or small groups.
@@ -142,6 +142,12 @@ Either way the rooms open with a timer and prompt. You can also **Share results*
 * Whether `sendMessage` reaches people already in breakout rooms. Insights, station notes and warnings depend on it. If it doesn't, prompts still arrive as each round starts, before people move, and Zoom's own closing countdown still warns everyone.
 * Whether `changeBreakoutRoom` lets attendees join an Open Space table directly from the app panel while Zoom's self-select is on.
 * Visiting rooms from the host panel uses `changeBreakoutRoom`, which Zoom documents for hosts.
+
+---
+
+## Going live
+
+See **[GO-LIVE.md](GO-LIVE.md)** for hosting (Vercel, Cloudflare Pages or Netlify), Zoom Marketplace setup, what you can test without Zoom's approval, and a first live-test checklist.
 
 ---
 

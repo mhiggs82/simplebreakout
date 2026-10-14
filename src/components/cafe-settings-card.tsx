@@ -118,7 +118,7 @@ export function CafeSettingsCard({
           />
           <p className="text-xs text-muted-foreground">
             You stay in the main room and can visit any table from the round controls. Co-hosts pinned to a
-            table join it from their own app panel, so they need SimpleBreakout open.
+            table join it from their own app panel, so they need Global Breakout open.
           </p>
         </fieldset>
       </CardContent>
