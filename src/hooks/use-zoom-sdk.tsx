@@ -15,25 +15,34 @@ import {
   type ReactNode,
 } from "react"
 
+import { createMockZoomClient, MOCK_SCENARIOS, type MockOptions, type ZoomClient } from "@/lib/zoom-client"
+
 // Every API or event the app calls must be declared here AND enabled for the
 // app in the Zoom Marketplace build flow, or the client rejects the call.
 const ZOOM_CAPABILITIES: Apis[] = [
   "connect",
   "onConnect",
   "postMessage",
+  "sendMessage",
   "onMessage",
   "getRunningContext",
   "getMeetingContext",
   "getUserContext",
   "onMyUserContextChange",
   "getMeetingParticipants",
+  "onParticipantChange",
+  "sendAppInvitationToAllParticipants",
   "createBreakoutRooms",
   "configureBreakoutRooms",
   "openBreakoutRooms",
   "closeBreakoutRooms",
   "getBreakoutRoomList",
   "assignParticipantToBreakoutRoom",
+  "changeBreakoutRoom",
   "onBreakoutRoomChange",
+  "addParticipantSpotlight",
+  "removeParticipantSpotlights",
+  "getParticipantSpotlights",
 ]
 
 const PRIVILEGED_ROLES = new Set(["host", "coHost"])
@@ -51,9 +60,11 @@ type ZoomSdkState =
       connected: boolean
       /** True when running outside Zoom with `?mock=host|attendee`. */
       isMock: boolean
+      /** The SDK, or an in-browser simulation of it in mock mode. */
+      client: ZoomClient
     }
 
-type ZoomSdkContextValue = ZoomSdkState & { sdk: typeof zoomSdk }
+type ZoomSdkContextValue = ZoomSdkState
 
 const ZoomSdkContext = createContext<ZoomSdkContextValue | null>(null)
 
@@ -62,6 +73,20 @@ function getMockRole(): string | null {
   return mock === "host" || mock === "coHost" || mock === "attendee"
     ? mock
     : null
+}
+
+/** `?scenario=...` picks the mock attendee demo (see MOCK_SCENARIOS); `?fast=1` shortens closing. */
+function mockOptions(): MockOptions {
+  const params = new URLSearchParams(window.location.search)
+  const scenario = params.get("scenario")
+  return {
+    scenario: MOCK_SCENARIOS.find((s) => s === scenario) ?? "questions",
+    closeDelayMs: (params.has("fast") ? 500 : 3000) * (params.has("chaos") ? 3 : 1),
+    people: Math.min(200, Math.max(1, Number(params.get("people")) || 20)),
+    cohosts: Math.max(0, Number(params.get("cohosts")) || 0),
+    churn: params.has("churn"),
+    chaos: params.has("chaos"),
+  }
 }
 
 function errorMessage(err: unknown): string {
@@ -75,20 +100,22 @@ function errorMessage(err: unknown): string {
 async function initialize(): Promise<ZoomSdkState> {
   const mockRole = getMockRole()
   if (mockRole) {
+    const self = {
+      screenName: "Mock User",
+      participantId: "0",
+      participantUUID: "mock-participant",
+      role: mockRole,
+    }
+    const isHostOrCoHost = PRIVILEGED_ROLES.has(mockRole)
     return {
       status: "ready",
       runningContext: "inMeeting",
       meeting: { meetingTopic: "Mock meeting", meetingID: "000-000-000" },
-      user: {
-        status: "authorized",
-        screenName: "Mock User",
-        participantId: "0",
-        participantUUID: "mock-participant",
-        role: mockRole,
-      },
-      isHostOrCoHost: PRIVILEGED_ROLES.has(mockRole),
+      user: { status: "authorized", ...self },
+      isHostOrCoHost,
       connected: true,
       isMock: true,
+      client: createMockZoomClient(self, !isHostOrCoHost, mockOptions()),
     }
   }
 
@@ -97,7 +124,7 @@ async function initialize(): Promise<ZoomSdkState> {
   if (config.runningContext !== "inMeeting") {
     return {
       status: "error",
-      error: `SimpleBreakout runs inside a meeting (current context: ${config.runningContext}).`,
+      error: `Global Breakout runs inside a meeting (current context: ${config.runningContext}).`,
     }
   }
 
@@ -127,6 +154,7 @@ async function initialize(): Promise<ZoomSdkState> {
     isHostOrCoHost: PRIVILEGED_ROLES.has(user.role),
     connected,
     isMock: false,
+    client: zoomSdk,
   }
 }
 
@@ -169,7 +197,7 @@ export function ZoomSdkProvider({ children }: { children: ReactNode }) {
   }, [isLive])
 
   return (
-    <ZoomSdkContext.Provider value={{ ...state, sdk: zoomSdk }}>
+    <ZoomSdkContext.Provider value={state}>
       {children}
     </ZoomSdkContext.Provider>
   )

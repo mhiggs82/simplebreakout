@@ -18,10 +18,11 @@ export default defineConfig({
   // mkcert installs a locally-trusted CA and issues a cert for localhost,
   // so the Zoom client's embedded browser accepts https://localhost:5173.
   // Set MKCERT_PATH to use an installed mkcert instead of auto-downloading it.
+  // Tests don't serve anything, so they skip certificate setup.
   plugins: [
     react(),
     tailwindcss(),
-    mkcert({ mkcertPath: process.env.MKCERT_PATH }),
+    !process.env.VITEST && mkcert({ mkcertPath: process.env.MKCERT_PATH }),
   ],
   resolve: {
     alias: {
