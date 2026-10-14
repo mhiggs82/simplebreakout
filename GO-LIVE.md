@@ -84,10 +84,9 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
 | 1-2-4-All, Think-Pair-Share, Gallery walk | ✅ The rooms and rotations work. ❌ Sending insights and notes needs the app. |
 | Open Space | ✅ Self-select is on, so people pick tables from **Zoom's own Breakout Rooms menu**. ❌ The app's table picker with head-counts needs the app. |
 | Fishbowl | ✅ The spotlight stage works. Observers use **Zoom's Raise Hand** instead of the app's button. |
-| Polls & word cloud, Spectrum line | ❌ These need attendees to have the app. Use Zoom's built-in Polls in the meantime. |
 
 **Suggested path**
-1. **This week (no approval):** run real sessions where only you have the app, using Match, Café, Speed, 1-2-4-All and Open Space. Add 1–2 colleagues to your Zoom account so you can also test the attendee panel and polls.
+1. **This week (no approval):** run real sessions where only you have the app, using Match, Café, Speed, 1-2-4-All and Open Space. Add 1–2 colleagues to your Zoom account so you can also test the attendee panel.
 2. **Then:** request Beta sharing from Zoom to try the full attendee experience with outside testers.
 3. **Later:** publish (unlisted, or publicly in the Marketplace) once you're happy.
 
@@ -104,9 +103,8 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
    - Check the attendee moves each round.
    - Check whether the attendee panel shows the prompt and countdown **while they're inside a room**. This is the key unknown.
 4. **Visit a room:** use **Visit a room** and **Back to main room**.
-5. **Polls:** ask a poll, have the attendee answer, then **Share results**.
-6. **Open Space:** open it, then have the attendee pick a table from the app *and* from Zoom's Breakout Rooms menu.
-7. **Fishbowl:** put the co-host on stage. Their video must be on for the spotlight.
+5. **Open Space:** open it, then have the attendee pick a table from the app *and* from Zoom's Breakout Rooms menu.
+6. **Fishbowl:** put the co-host on stage. Their video must be on for the spotlight.
 
 Note anything odd: wording, waiting times, or anything that didn't move.
 

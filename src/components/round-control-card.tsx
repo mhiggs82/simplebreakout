@@ -31,7 +31,6 @@ export function RoundControlCard({
   onStart,
   config,
   client,
-  hideStart = false,
 }: {
   title: string
   description: string
@@ -43,8 +42,6 @@ export function RoundControlCard({
   /** Used by the room preview to label members. */
   config: MatchConfig
   client: ZoomClient
-  /** For activities started elsewhere (e.g. Spectrum line's grouping buttons). */
-  hideStart?: boolean
 }) {
   const { state, active } = runner
   const now = useNow(state?.phase === "open")
@@ -111,7 +108,6 @@ export function RoundControlCard({
 
       <CardFooter className="flex-col items-stretch gap-3">
         {!active ? (
-          !hideStart && (
           <>
             <Button size="lg" className="h-12 w-full text-base" disabled={!canStart} onClick={onStart}>
               <Sparkles aria-hidden="true" />
@@ -119,7 +115,6 @@ export function RoundControlCard({
             </Button>
             {startHint && <p className="text-sm text-muted-foreground">{startHint}</p>}
           </>
-          )
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {state?.phase === "paused" ? (

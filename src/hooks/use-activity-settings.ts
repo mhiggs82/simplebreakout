@@ -46,12 +46,6 @@ export interface OpenSpaceSettings {
   minutes: number
 }
 
-export interface SpectrumSettings {
-  groupSize: number
-  minutes: number
-  prompt: string
-}
-
 export interface ActivitySettings {
   activity: Activity
   cafe: CafeSettings
@@ -61,7 +55,6 @@ export interface ActivitySettings {
   tps: TpsSettings
   gallery: GallerySettings
   openSpace: OpenSpaceSettings
-  spectrum: SpectrumSettings
 }
 
 export const ICEBREAKERS = [
@@ -117,10 +110,11 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     ],
     minutes: 0,
   },
-  spectrum: { groupSize: 4, minutes: 8, prompt: "Why did you place yourself where you did?" },
 }
 
 const STORAGE_KEY = "simplebreakout.activities.v1"
+
+const ACTIVITIES: readonly Activity[] = ["match", "cafe", "speed", "fishbowl", "oneTwoFour", "openSpace", "tps", "gallery"]
 
 function load(): ActivitySettings {
   try {
@@ -129,6 +123,8 @@ function load(): ActivitySettings {
       return {
         ...DEFAULT_ACTIVITY_SETTINGS,
         ...saved,
+        // Formats that were removed (e.g. polls, spectrum) fall back to Match.
+        activity: ACTIVITIES.includes(saved.activity) ? saved.activity : DEFAULT_ACTIVITY_SETTINGS.activity,
         cafe: { ...DEFAULT_ACTIVITY_SETTINGS.cafe, ...saved.cafe },
         speed: { ...DEFAULT_ACTIVITY_SETTINGS.speed, ...saved.speed },
         fishbowl: { ...DEFAULT_ACTIVITY_SETTINGS.fishbowl, ...saved.fishbowl },
@@ -136,7 +132,6 @@ function load(): ActivitySettings {
         tps: { ...DEFAULT_ACTIVITY_SETTINGS.tps, ...saved.tps },
         gallery: { ...DEFAULT_ACTIVITY_SETTINGS.gallery, ...saved.gallery },
         openSpace: { ...DEFAULT_ACTIVITY_SETTINGS.openSpace, ...saved.openSpace },
-        spectrum: { ...DEFAULT_ACTIVITY_SETTINGS.spectrum, ...saved.spectrum },
       }
     }
   } catch {

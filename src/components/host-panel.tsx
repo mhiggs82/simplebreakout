@@ -8,10 +8,8 @@ import { MatchSettingsCard } from "@/components/match-settings-card"
 import { OpenSpaceCard } from "@/components/open-space-card"
 import { OrchestrateCard } from "@/components/orchestrate-card"
 import { ParticipantsCard } from "@/components/participants-card"
-import { PulseCard } from "@/components/pulse-card"
 import { RoomSettingsCard, type RoomSettings } from "@/components/room-settings-card"
 import { RoundControlCard } from "@/components/round-control-card"
-import { SpectrumCard, type SpectrumGrouping } from "@/components/spectrum-card"
 import { SpeedSettingsCard } from "@/components/speed-settings-card"
 import {
   GalleryCard,
@@ -25,7 +23,6 @@ import { useFishbowl } from "@/hooks/use-fishbowl"
 import { useHarvest } from "@/hooks/use-harvest"
 import { useHostSession } from "@/hooks/use-host-session"
 import { useOpenSpace } from "@/hooks/use-open-space"
-import { usePulse } from "@/hooks/use-pulse"
 import { useRoundRunner, type StartOptions } from "@/hooks/use-round-runner"
 import { useSeatListener } from "@/hooks/use-seat-listener"
 import { uniqueNames } from "@/lib/matchmaking/engine"
@@ -38,7 +35,6 @@ import {
   promptFor,
 } from "@/lib/matchmaking/rounds"
 import type { Activity, Candidate, TimedActivity } from "@/lib/matchmaking/types"
-import { groupSimilar, pairOpposites, type SpectrumPoint } from "@/lib/pulse"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 const PRIVILEGED = new Set(["host", "coHost"])
@@ -57,10 +53,8 @@ function stepMinutes(activity: Activity, a: ActivitySettings, round: number): nu
       return a.oneTwoFour.steps[Math.min(round, 3)].minutes
     case "tps":
       return a.tps[TPS_STEPS[Math.min(round, 2)].key].minutes
-    case "gallery":
-      return a.gallery.minutes
     default:
-      return a.spectrum.minutes
+      return a.gallery.minutes
   }
 }
 
@@ -69,7 +63,6 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   const [activities, setActivities] = useActivitySettings()
   const runner = useRoundRunner()
   const fishbowl = useFishbowl(client)
-  const pulse = usePulse(client)
   const seat = useSeatListener(client, selfUuid)
   const harvest = useHarvest(client, runner.state?.plan ?? null, true)
   const [running, setRunning] = useState<TimedActivity | null>(null)
@@ -83,10 +76,10 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
 
   // The runner calls back into these between rounds, so it always sees the
   // people in the meeting right now.
-  const latest = useRef({ session, activities, votes: pulse.votes })
+  const latest = useRef({ session, activities })
   const galleryGroups = useRef<Candidate[][]>([])
   useEffect(() => {
-    latest.current = { session, activities, votes: pulse.votes }
+    latest.current = { session, activities }
   })
 
   /** Pinned people the SDK can't assign: you and other hosts / co-hosts. */
@@ -96,7 +89,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   }
   const openSpace = useOpenSpace(client, selfSeated)
 
-  const { activity, cafe, speed, oneTwoFour, tps, gallery, spectrum } = activities
+  const { activity, cafe, speed, oneTwoFour, tps, gallery } = activities
   const locked = runner.active || openSpace.phase === "open" || openSpace.phase === "opening"
   const setActivity = (value: Activity) => setActivities((a) => ({ ...a, activity: value }))
   const update = <K extends keyof ActivitySettings>(key: K) => (next: ActivitySettings[K]) =>
@@ -105,7 +98,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   const candidates = () => latest.current.session.candidates
   const timedSettings = { ...settings, closeAfter: 0 }
 
-  function optionsFor(kind: TimedActivity, grouping?: SpectrumGrouping): StartOptions {
+  function optionsFor(kind: TimedActivity): StartOptions {
     const a = latest.current.activities
     const base = { client, activity: kind, settings: timedSettings, selfUuid }
     switch (kind) {
@@ -180,33 +173,13 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
           },
         }
       }
-      case "spectrum":
-        return {
-          ...base,
-          rounds: 1,
-          minutes: a.spectrum.minutes,
-          prompt: () => latest.current.activities.spectrum.prompt || undefined,
-          plan: () => {
-            const { votes } = latest.current
-            const points: SpectrumPoint[] = []
-            const unanswered: Candidate[] = []
-            for (const person of candidates()) {
-              const vote = votes.get(person.uuid)
-              if (vote && "value" in vote) points.push({ person, value: vote.value })
-              else unanswered.push(person)
-            }
-            return grouping === "similar"
-              ? groupSimilar(points, latest.current.activities.spectrum.groupSize, unanswered)
-              : pairOpposites(points, unanswered)
-          },
-        }
     }
   }
 
-  const start = (kind: TimedActivity, grouping?: SpectrumGrouping) => {
+  const start = (kind: TimedActivity) => {
     if (HARVESTING.has(kind)) harvest.clear()
     setRunning(kind)
-    runner.start(optionsFor(kind, grouping))
+    runner.start(optionsFor(kind))
   }
 
   // Gallery walk: as each station round opens, show the group the notes left there before.
@@ -263,9 +236,9 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
     }
   }
 
-  const controls = (kind: TimedActivity, hideStart = false) => (
+  const controls = (kind: TimedActivity) => (
     <RoundControlCard
-      title={kind === "spectrum" ? "Rooms" : "Run it"}
+      title="Run it"
       description="Steps advance automatically. You stay in the main room and can visit any room."
       runner={runner}
       minutes={stepMinutes(running ?? kind, activities, state?.round ?? 0)}
@@ -274,7 +247,6 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
       onStart={() => start(kind)}
       config={session.config}
       client={client}
-      hideStart={hideStart}
     />
   )
 
@@ -352,22 +324,6 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
             }
           />
           <RoomSettingsCard settings={settings} onChange={setSettings} timed forceChoose />
-        </>
-      )}
-
-      {activity === "pulse" && <PulseCard pulse={pulse} people={Math.max(0, session.people.length - 1)} />}
-
-      {activity === "spectrum" && (
-        <>
-          <SpectrumCard
-            pulse={pulse}
-            people={session.people}
-            value={spectrum}
-            onChange={update("spectrum")}
-            onGroup={(grouping) => start("spectrum", grouping)}
-            running={runner.active}
-          />
-          {(runner.active || (running === "spectrum" && state)) && controls("spectrum", true)}
         </>
       )}
 

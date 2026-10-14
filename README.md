@@ -82,7 +82,7 @@ The host's roles and questions are saved in the browser, so they're ready next m
 
 ## Audience Interactions
 
-The host panel keeps the everyday formats up front: **Match | Café | Speed**. Everything else is tucked under **More**: 1-2-4-All, Open Space, Think-Pair-Share, Polls & word cloud, Spectrum line, Gallery walk and Fishbowl. Your tables, prompts and timings are remembered on this device.
+The host panel keeps the everyday formats up front: **Match | Café | Speed**. Everything else is tucked under **More**: 1-2-4-All, Open Space, Think-Pair-Share, Gallery walk and Fishbowl. Your tables, prompts and timings are remembered on this device.
 
 **You stay in the main room.** For any format that uses breakout rooms, open **Visit a room** in the controls to drop into any room, and **Back to main room** to return.
 
@@ -125,18 +125,6 @@ Name the stations (rooms). Groups are formed once, stay together, and move one s
 
 ### Open Space / pick-a-table *(More)*
 Name the tables. Each one can have a seat limit (0 means none) and a table host. Click **Open the space**, and attendees see the tables with live head-counts and **Join** buttons, so they can move whenever they like. Seat limits are **soft**: full tables are disabled in the app, but Zoom's own breakout menu still works, so nobody gets stuck. Optionally the space closes itself after a set number of minutes.
-
-### Polls & word cloud *(More)*
-* A **poll** has a question and 2–6 options. A **word cloud** collects answers of up to 3 words. Quick starts include an energy check, a clarity check and "one word for how you're arriving".
-* Results build up on **your screen only**. Click **Share results** to show them in everyone's panel.
-* Answers are anonymous to everyone else. In a word cloud you can click a word to hide it before sharing.
-
-### Spectrum line *(More)*
-You give a statement and two end labels. Everyone places themselves on a **1–10 slider**, and you see the distribution plus who's where (only you see names). Then:
-* **Pair opposites** puts the lowest with the highest, and so on, or
-* **Group similar** puts like-minded people together, with rooms named by range, e.g. "Positions 8–10".
-
-Either way the rooms open with a timer and prompt. You can also **Share results** as an anonymous histogram.
 
 ### Things to confirm in a real meeting
 * Whether `sendMessage` reaches people already in breakout rooms. Insights, station notes and warnings depend on it. If it doesn't, prompts still arrive as each round starts, before people move, and Zoom's own closing countdown still warns everyone.
@@ -181,7 +169,7 @@ The SDK only works inside the Zoom client. To work on the UI in a normal browser
 * `https://localhost:5173/?mock=attendee`: attendee view. A simulated host sends questions after a moment.
 * `?mock=attendee&scenario=round`: attendee during a café round (prompt, countdown, 1-minute warning).
 * `?mock=attendee&scenario=fishbowl`: attendee watching a Fishbowl, with the raise-hand button.
-* `?mock=attendee&scenario=poll`, `cloud`, `spectrum`, `openspace` or `gallery`: the attendee side of each More format.
+* `?mock=attendee&scenario=openspace` or `gallery`: the attendee side of those More formats.
 * Add `&fast=1` to make simulated rooms close quickly.
 * Stress-test flags for `?mock=host`: `people=N` (meeting size, 1–200), `cohosts=K`, `churn=1` (people keep joining and leaving), `chaos=1` (about 10% of SDK calls fail, and rooms close slowly). For example: `?mock=host&fast=1&people=60&cohosts=2&churn=1&chaos=1`.
 
@@ -221,7 +209,6 @@ src/
 │   ├── use-attendee-session.ts      # Questions, round prompts/timer, Fishbowl hand (attendee)
 │   ├── use-activity-settings.ts     # Activity choice + café/speed/fishbowl settings (saved)
 │   ├── use-round-runner.ts          # React wrapper around the round runner
-│   ├── use-pulse.ts                 # Polls, word clouds, spectrum answers (host)
 │   ├── use-harvest.ts               # Insights + gallery station notes (host)
 │   ├── use-open-space.ts            # Open Space tables, live head-counts (host)
 │   ├── use-seat-listener.ts         # Pinned hosts/co-hosts join their table themselves
@@ -235,10 +222,7 @@ src/
 │   ├── room-visitor.tsx             # Host visits a room / returns to main room
 │   ├── step-format-cards.tsx        # 1-2-4-All, Think-Pair-Share, Gallery walk setup
 │   ├── open-space-card.tsx          # Open Space tables, limits, live counts
-│   ├── pulse-card.tsx               # Polls & word cloud
-│   ├── spectrum-card.tsx            # Spectrum line
 │   ├── harvest-board.tsx            # Collected insights / station notes
-│   ├── results-view.tsx             # Bars, word cloud, spectrum histogram
 │   ├── match-settings-card.tsx      # Mode tabs, roles editor, questions editor
 │   ├── participants-card.tsx        # Include/exclude, answers, host overrides
 │   ├── room-plan.tsx                # Preview of planned rooms
@@ -252,7 +236,6 @@ src/
     ├── matchmaking/engine.ts        # Pure matching logic for all three modes (+ tests)
     ├── matchmaking/rounds.ts        # Speed rounds, café rotations, 1-2-4 merging, gallery rotation (+ tests)
     ├── round-runner.ts              # Timed steps (rooms or main room) state machine (+ tests)
-    ├── pulse.ts                     # Poll tally, word cloud, spectrum pairing (+ tests)
     ├── orchestrate.ts               # create → configure → assign → open (+ tests)
     ├── messages.ts                  # sendMessage protocol, validation, 1 KB check (+ tests)
     ├── zoom-client.ts               # SDK surface used + in-browser mock
@@ -283,7 +266,6 @@ if (zoom.status === "ready" && zoom.isHostOrCoHost) {
 - [x] Fishbowl on the main stage with raised hands and swap-in
 - [x] 1-2-4-All, Think-Pair-Share with harvest, Gallery walk
 - [x] Open Space / pick-a-table with live head-counts
-- [x] Polls, word clouds and Spectrum line with host-controlled sharing
-- [ ] Session agenda: chain several formats into one run (e.g. poll → café → harvest)
-- [ ] Export the harvest and poll results (CSV / copy to clipboard)
+- [ ] Session agenda: chain several formats into one run (e.g. speed → café → harvest)
+- [ ] Export the harvest (CSV / copy to clipboard)
 - [ ] Strict matching option (leave people in the main room rather than mix)

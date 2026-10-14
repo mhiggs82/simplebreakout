@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   ChevronDown,
   Coffee,
   Fish,
@@ -8,7 +7,6 @@ import {
   Layers,
   Lightbulb,
   MoreHorizontal,
-  SlidersHorizontal,
   Sparkles,
   Timer,
 } from "lucide-react"
@@ -37,8 +35,6 @@ export const MORE: Item[] = [
   { value: "oneTwoFour", label: "1-2-4-All", icon: Layers, description: "Reflect alone, then pairs, fours, everyone" },
   { value: "openSpace", label: "Open Space", icon: LayoutGrid, description: "People pick a named table themselves" },
   { value: "tps", label: "Think-Pair-Share", icon: Lightbulb, description: "Think, discuss in pairs, harvest insights" },
-  { value: "pulse", label: "Polls & word cloud", icon: BarChart3, description: "Quick pulse checks, results when you're ready" },
-  { value: "spectrum", label: "Spectrum line", icon: SlidersHorizontal, description: "Place yourself 1–10, then pair opposites" },
   { value: "gallery", label: "Gallery walk", icon: Frame, description: "Groups rotate through stations leaving notes" },
   { value: "fishbowl", label: "Fishbowl", icon: Fish, description: "Inner circle on stage; others watch and swap in" },
 ]
