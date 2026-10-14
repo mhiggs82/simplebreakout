@@ -35,6 +35,21 @@ Global Breakout is a **static website**. There's no server or database, because 
 
 The same steps work on Cloudflare Pages or Netlify: build command `npm run build`, output folder `dist`.
 
+### Use your own domain: `breakout.getparentwise.com`
+Use a **subdomain**, so your main getparentwise.com website stays exactly as it is.
+
+1. In Vercel: **Project → Settings → Domains → Add** → `breakout.getparentwise.com`.
+2. At your domain registrar or DNS provider, add one record:
+
+   | Type | Name | Value |
+   | --- | --- | --- |
+   | CNAME | `breakout` | `cname.vercel-dns.com` |
+
+3. Wait for Vercel to show **Valid Configuration** (usually a few minutes). HTTPS is set up automatically.
+4. Use `https://breakout.getparentwise.com/` as the Home URL, OAuth Redirect URL and OAuth Allow List in Zoom, and `breakout.getparentwise.com` in the Domain Allow List.
+
+**One app serves every country.** Run each cohort (Saudi Arabia, Netherlands, …) as its own Zoom meeting with the same app; there's no separate deployment per country.
+
 ---
 
 ## 2. Register the app in the Zoom Marketplace
