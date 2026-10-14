@@ -6,49 +6,37 @@ This guide gets Global Breakout from this repository into real Zoom meetings wit
 2. **Register it with Zoom**: create the Zoom App in the Zoom Marketplace and point it at your website.
 3. **Test with people**: what works without any Zoom approval, and when you'd need it.
 
-Plan on about an hour for the first time through.
+Hosting is done (see below). The Zoom setup takes about 30 minutes the first time through.
 
 ---
 
-## 1. Hosting
+## 1. Hosting (done)
 
-Global Breakout is a **static website**. There's no server or database, because everything runs in the Zoom client and talks over Zoom's own messaging. Any static host that serves HTTPS and lets you set response headers will work.
+Global Breakout is live:
 
-| Host | Cost | Notes |
-| --- | --- | --- |
-| **Vercel** | Free (Hobby, personal and non-commercial use) · $20/month (Pro, commercial) | Uses `vercel.json` in this repo. Deploys automatically from GitHub. |
-| **Cloudflare Pages** | Free, including commercial use | Uses `public/_headers` in this repo. Fast worldwide. |
-| **Netlify** | Free tier | Uses `public/_headers` in this repo. |
+| | |
+| --- | --- |
+| **Production URL (use this everywhere)** | **`https://breakout.getparentwise.com/`** |
+| Vercel fallback address | `https://simplebreakout.vercel.app/` (same app; use only for troubleshooting) |
+| Vercel project | `simplebreakout` (team: mhiggs82's projects, Hobby plan) |
+| Source | GitHub `mhiggs82/simplebreakout` |
+| DNS | Spaceship: CNAME `breakout` → Vercel |
 
-**Recommendation:** start on **Vercel's free plan** while you test. If Global Breakout becomes a paid offering, move to Vercel Pro or Cloudflare Pages. A custom domain such as `app.globalbreakout.com` (about $10–15/year) is optional, but it looks more trustworthy in Zoom's install screens.
+**Always give Zoom the getparentwise.com address.** It's the one you control, and it stays the same even if the app moves to another host.
 
-### Deploy on Vercel (about 10 minutes)
-1. Merge the pull request into `main`, or deploy the `claude/adoring-lamport-vvtf23` branch directly.
-2. Go to **vercel.com** → **Add New… → Project** → import `mhiggs82/simplebreakout`.
-3. Vercel detects **Vite** automatically. The build command is `npm run build` and the output is `dist`. Click **Deploy**.
-4. You get a URL like `https://global-breakout.vercel.app`. Write it down; it's your **Home URL**.
-5. Check that the security headers Zoom requires are present:
-   ```bash
-   curl -sI https://YOUR-URL/ | grep -iE "strict-transport|content-security|nosniff|referrer"
-   ```
-   All four must appear. Without them, Zoom refuses to show the app.
+The app is a **static website**. There's no server or database: everything runs in the Zoom client and talks over Zoom's own messaging. One deployment serves every country. Each cohort (Saudi Arabia, Netherlands, …) is simply its own Zoom meeting.
 
-The same steps work on Cloudflare Pages or Netlify: build command `npm run build`, output folder `dist`.
+### How updates go live
+Vercel rebuilds automatically on every push. Whatever lands on the **production branch** goes live on `breakout.getparentwise.com` within about a minute.
 
-### Use your own domain: `breakout.getparentwise.com`
-Use a **subdomain**, so your main getparentwise.com website stays exactly as it is.
+Make sure the production branch is `main`: Vercel → `simplebreakout` → **Settings → Environments → Production → Branch Tracking** → `main` → **Save**. Every other branch gets its own preview link and never touches the live site.
 
-1. In Vercel: **Project → Settings → Domains → Add** → `breakout.getparentwise.com`.
-2. At your domain registrar or DNS provider, add one record:
-
-   | Type | Name | Value |
-   | --- | --- | --- |
-   | CNAME | `breakout` | `cname.vercel-dns.com` |
-
-3. Wait for Vercel to show **Valid Configuration** (usually a few minutes). HTTPS is set up automatically.
-4. Use `https://breakout.getparentwise.com/` as the Home URL, OAuth Redirect URL and OAuth Allow List in Zoom, and `breakout.getparentwise.com` in the Domain Allow List.
-
-**One app serves every country.** Run each cohort (Saudi Arabia, Netherlands, …) as its own Zoom meeting with the same app; there's no separate deployment per country.
+### Check the headers Zoom requires
+Run this after any hosting change:
+```bash
+curl -sI https://breakout.getparentwise.com/ | grep -iE "strict-transport|content-security|nosniff|referrer"
+```
+All four headers must appear; without them Zoom refuses to show the app. They come from `vercel.json`, and `public/_headers` covers Netlify or Cloudflare if you ever move.
 
 ---
 
@@ -59,19 +47,19 @@ Sign in at **marketplace.zoom.us** with the Zoom account you'll host meetings fr
 1. **Develop → Build App → General App** (user-managed).
 2. **Basic Information**
    - App name: **Global Breakout**
-   - **OAuth Redirect URL**: your Home URL, e.g. `https://global-breakout.vercel.app/`. After someone adds the app, Zoom sends them here and they see a "Global Breakout is added to your Zoom" page.
-   - **OAuth Allow List**: the same URL.
+   - **OAuth Redirect URL**: `https://breakout.getparentwise.com/`. After someone adds the app, Zoom sends them here and they see a "Global Breakout is added to your Zoom" page.
+   - **OAuth Allow List**: `https://breakout.getparentwise.com/`
 3. **Features → Surface**
    - Select **Meetings**, i.e. the in-client app.
-   - **Home URL**: your Home URL.
-   - **Domain Allow List**: your domain, e.g. `global-breakout.vercel.app`.
+   - **Home URL**: `https://breakout.getparentwise.com/`
+   - **Domain Allow List**: `breakout.getparentwise.com`
 4. **Features → Zoom App SDK → Add APIs.** Add every API the app uses:
    `getMeetingContext`, `getUserContext`, `onMyUserContextChange`, `getRunningContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `onBreakoutRoomChange`, `sendMessage`, `onMessage`, `connect`, `onConnect`, `postMessage`, `sendAppInvitationToAllParticipants`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`.
 5. **Scopes**: add `zoomapp:inmeeting`.
 6. **Local Test → Add App Now.** Approve the permissions. You'll land on the "added" page.
 7. Open the **Zoom desktop app** (version 5.15.5 or later), start a meeting, click **Apps**, then **Global Breakout**.
 
-> Fill in the **Development** tab first; that's what Local Test uses. You can put the same Vercel URL in both the Development and Production sections.
+> Fill in the **Development** tab first; that's what Local Test uses. Put `https://breakout.getparentwise.com/` in both the Development and Production sections.
 
 ---
 
@@ -127,7 +115,7 @@ Note anything odd: wording, waiting times, or anything that didn't move.
 ## Troubleshooting
 | Symptom | Fix |
 | --- | --- |
-| Blank panel, or "Missing OWASP Secure Headers" | Check the four headers with `curl -sI`. Make sure `vercel.json` or `_headers` was deployed. |
+| Blank panel, or "Missing OWASP Secure Headers" | Check the four headers with `curl -sI`. Make sure `vercel.json` was deployed and the URL in Zoom is `https://breakout.getparentwise.com/`. |
 | "Can't start Global Breakout: Could not reach the Zoom client" | You opened the URL in a normal browser. Open it from **Apps** inside a Zoom meeting. |
 | A button does nothing or shows a permission error | The API isn't added in **Zoom App SDK → Add APIs**. Add it, then re-add the app (Local Test). |
 | "Zoom only shares the participant list with the meeting host" | Start the meeting yourself, or make sure you're the host rather than a co-host. |
