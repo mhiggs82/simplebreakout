@@ -50,12 +50,12 @@ function summary(answers: Answers | undefined, config: MatchConfig): string {
     .join(" · ")
 }
 
-function PersonRow({ person, session }: { person: MeetingPerson; session: HostSession }) {
+function PersonRow({ person, session, showAnswers }: { person: MeetingPerson; session: HostSession; showAnswers: boolean }) {
   const { config } = session
   const [editing, setEditing] = useState(false)
   const included = session.isIncluded(person)
   const answers = session.answers[person.uuid]
-  const asks = config.mode !== "random"
+  const asks = showAnswers && config.mode !== "random"
   const current: Answers = answers ?? { tags: {} }
   const answerText = summary(answers, config)
 
@@ -126,7 +126,8 @@ function PersonRow({ person, session }: { person: MeetingPerson; session: HostSe
   )
 }
 
-export function ParticipantsCard({ session }: { session: HostSession }) {
+/** `showAnswers` is off for activities that don't use the matchmaking questions. */
+export function ParticipantsCard({ session, showAnswers = true }: { session: HostSession; showAnswers?: boolean }) {
   const { people, config } = session
   const includedCount = people.filter(session.isIncluded).length
   const answeredCount = people.filter((p) => session.isIncluded(p) && summary(session.answers[p.uuid], config)).length
@@ -137,7 +138,7 @@ export function ParticipantsCard({ session }: { session: HostSession }) {
         <CardTitle>Participants</CardTitle>
         <CardDescription aria-live="polite">
           {includedCount} of {people.length} will be matched
-          {config.mode !== "random" && ` · ${answeredCount} answered`}
+          {showAnswers && config.mode !== "random" && ` · ${answeredCount} answered`}
         </CardDescription>
         <CardAction>
           <Button variant="ghost" size="icon-sm" aria-label="Refresh participants" onClick={() => void session.refreshParticipants()}>
@@ -151,11 +152,11 @@ export function ParticipantsCard({ session }: { session: HostSession }) {
         ) : (
           <ul className="max-h-80 divide-y overflow-y-auto pr-1">
             {people.map((person) => (
-              <PersonRow key={person.uuid} person={person} session={session} />
+              <PersonRow key={person.uuid} person={person} session={session} showAnswers={showAnswers} />
             ))}
           </ul>
         )}
-        {config.mode !== "random" && (
+        {showAnswers && config.mode !== "random" && (
           <p className="pt-3 text-xs text-muted-foreground">
             People without the app can't answer: set their answers with the arrow, or they'll be placed wherever there's room.
           </p>

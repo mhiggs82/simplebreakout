@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from "react"
 
-import { createMockZoomClient, type ZoomClient } from "@/lib/zoom-client"
+import { createMockZoomClient, type MockOptions, type ZoomClient } from "@/lib/zoom-client"
 
 // Every API or event the app calls must be declared here AND enabled for the
 // app in the Zoom Marketplace build flow, or the client rejects the call.
@@ -38,7 +38,11 @@ const ZOOM_CAPABILITIES: Apis[] = [
   "closeBreakoutRooms",
   "getBreakoutRoomList",
   "assignParticipantToBreakoutRoom",
+  "changeBreakoutRoom",
   "onBreakoutRoomChange",
+  "addParticipantSpotlight",
+  "removeParticipantSpotlights",
+  "getParticipantSpotlights",
 ]
 
 const PRIVILEGED_ROLES = new Set(["host", "coHost"])
@@ -71,6 +75,16 @@ function getMockRole(): string | null {
     : null
 }
 
+/** `?scenario=round|fishbowl` picks the mock attendee demo; `?fast=1` shortens closing. */
+function mockOptions(): MockOptions {
+  const params = new URLSearchParams(window.location.search)
+  const scenario = params.get("scenario")
+  return {
+    scenario: scenario === "round" || scenario === "fishbowl" ? scenario : "questions",
+    closeDelayMs: params.has("fast") ? 500 : 3000,
+  }
+}
+
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
   if (typeof err === "object" && err && "message" in err) {
@@ -97,7 +111,7 @@ async function initialize(): Promise<ZoomSdkState> {
       isHostOrCoHost,
       connected: true,
       isMock: true,
-      client: createMockZoomClient(self, !isHostOrCoHost),
+      client: createMockZoomClient(self, !isHostOrCoHost, mockOptions()),
     }
   }
 

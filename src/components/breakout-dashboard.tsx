@@ -1,8 +1,20 @@
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import type { ConfigureBreakoutRoomsOptions } from "@zoom/appssdk"
-import { DoorClosed, Eye, Loader2, ShieldAlert, Sparkles } from "lucide-react"
+import { Coffee, DoorClosed, Eye, Fish, Loader2, ShieldAlert, Sparkles, Timer } from "lucide-react"
 
 import { AttendeePanel } from "@/components/attendee-panel"
+import { CafeSettingsCard } from "@/components/cafe-settings-card"
+import { FishbowlCard } from "@/components/fishbowl-card"
+import { RoundControlCard } from "@/components/round-control-card"
+import { NumberField } from "@/components/round-fields"
+import { SpeedSettingsCard } from "@/components/speed-settings-card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useActivitySettings } from "@/hooks/use-activity-settings"
+import { useFishbowl } from "@/hooks/use-fishbowl"
+import { useRoundRunner } from "@/hooks/use-round-runner"
+import { useSeatListener } from "@/hooks/use-seat-listener"
+import { uniqueNames } from "@/lib/matchmaking/engine"
+import { planCafeRound, planSpeedRound, promptFor } from "@/lib/matchmaking/rounds"
 import { MatchSettingsCard } from "@/components/match-settings-card"
 import { ParticipantsCard } from "@/components/participants-card"
 import { RoomPlan } from "@/components/room-plan"
@@ -23,7 +35,7 @@ import { Switch } from "@/components/ui/switch"
 import { useHostSession, type HostSession } from "@/hooks/use-host-session"
 import { useZoomSdk } from "@/hooks/use-zoom-sdk"
 import { buildMatchPlan } from "@/lib/matchmaking/engine"
-import type { MatchPlan } from "@/lib/matchmaking/types"
+import type { Activity, MatchPlan } from "@/lib/matchmaking/types"
 import {
   orchestrate,
   type OrchestrationProgress,
@@ -40,7 +52,7 @@ type ToggleSettings = Required<
   >
 >
 
-type RoomSettings = ToggleSettings & { closeAfter: number }
+type RoomSettings = ToggleSettings & { closeAfter: number; countDown: number }
 
 const SETTING_LABELS: { key: keyof ToggleSettings; label: string; hint: string }[] = [
   {
@@ -85,9 +97,12 @@ function errorText(err: unknown): string {
 function RoomSettingsCard({
   settings,
   onChange,
+  timed,
 }: {
   settings: RoomSettings
   onChange: (next: RoomSettings) => void
+  /** Timed activities close rooms themselves, so "close after" is hidden. */
+  timed: boolean
 }) {
   const idPrefix = useId()
   return (
@@ -115,6 +130,15 @@ function RoomSettingsCard({
             </div>
           )
         })}
+        <NumberField
+          label="Closing countdown"
+          hint="Seconds people get to wrap up when rooms close."
+          value={settings.countDown}
+          min={10}
+          max={120}
+          onChange={(countDown) => onChange({ ...settings, countDown })}
+        />
+        {!timed && (
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-0.5">
             <Label htmlFor={`${idPrefix}-close`}>Close rooms after</Label>
@@ -135,6 +159,7 @@ function RoomSettingsCard({
             }
           />
         </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -279,21 +304,148 @@ function OrchestrateCard({
   )
 }
 
+const ACTIVITIES: { value: Activity; label: string; icon: typeof Sparkles }[] = [
+  { value: "match", label: "Match", icon: Sparkles },
+  { value: "cafe", label: "Café", icon: Coffee },
+  { value: "speed", label: "Speed", icon: Timer },
+  { value: "fishbowl", label: "Fishbowl", icon: Fish },
+]
+
+const PRIVILEGED = new Set(["host", "coHost"])
+
 function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: string }) {
   const session = useHostSession(client, selfUuid)
+  const [activities, setActivities] = useActivitySettings()
+  const runner = useRoundRunner()
+  const fishbowl = useFishbowl(client)
+  const seat = useSeatListener(client, selfUuid)
   const [settings, setSettings] = useState<RoomSettings>({
     automaticallyMoveParticipantsIntoRooms: true,
     allowParticipantsReturnToMainSession: true,
     allowParticipantsChooseRoom: false,
     closeAfter: 0,
+    countDown: 30,
   })
+
+  // The runner calls back into these between rounds, so it always sees the
+  // people who are in the meeting right now.
+  const latest = useRef({ session, activities })
+  useEffect(() => {
+    latest.current = { session, activities }
+  })
+
+  const { activity, cafe, speed } = activities
+  const timed = activity === "cafe" || activity === "speed"
+  const setActivity = (value: Activity) => setActivities((a) => ({ ...a, activity: value }))
+
+  /** Pinned people the SDK can't assign: you and other hosts / co-hosts. */
+  const selfSeated = (uuid: string) => {
+    const person = latest.current.session.people.find((p) => p.uuid === uuid)
+    return person !== undefined && (person.isSelf || PRIVILEGED.has(person.zoomRole))
+  }
+
+  const startTimed = () => {
+    const rounds = activity === "cafe" ? cafe : speed
+    runner.start({
+      client,
+      activity: activity === "cafe" ? "cafe" : "speed",
+      rounds: rounds.rounds,
+      minutes: rounds.minutes,
+      settings: { ...settings, closeAfter: 0 },
+      selfUuid,
+      prompt: (round) => promptFor(rounds.prompts, round),
+      plan: (_round, history) => {
+        const { session: s, activities: a } = latest.current
+        if (a.activity === "cafe") {
+          const people = s.candidates.filter((c) => !selfSeated(c.uuid))
+          return planCafeRound(a.cafe.tables, people, history)
+        }
+        return planSpeedRound(s.candidates, a.speed.groupSize, history, Math.random, a.speed.roomLabels)
+      },
+      seats: () => {
+        const { activities: a } = latest.current
+        if (a.activity !== "cafe") return []
+        const names = uniqueNames(a.cafe.tables.map((t) => ({ name: t.name, members: [] }))).map((r) => r.name)
+        return a.cafe.tables.flatMap((t, i) =>
+          t.pinned.filter(selfSeated).map((participantUUID) => ({ participantUUID, roomName: names[i] })),
+        )
+      },
+    })
+  }
+
+  const unhosted = cafe.tables.filter((t) => t.pinned.length === 0).length
+  const startHint =
+    activity === "cafe"
+      ? unhosted > 0
+        ? `${unhosted} table(s) have no Table Host yet.`
+        : `${cafe.rounds} rotations of ${cafe.minutes} min across ${cafe.tables.length} tables.`
+      : `${speed.rounds} rounds of ${speed.minutes} min, groups of ${speed.groupSize}.`
 
   return (
     <>
-      <MatchSettingsCard session={session} disabled={false} />
-      <ParticipantsCard session={session} />
-      <RoomSettingsCard settings={settings} onChange={setSettings} />
-      <OrchestrateCard client={client} session={session} settings={settings} />
+      {seat && (
+        <p role="status" className="rounded-lg border p-3 text-sm">
+          You're hosting <strong>{seat.roomName}</strong>.{seat.error && ` ${seat.error}`}
+        </p>
+      )}
+      <Tabs value={activity} onValueChange={(v) => setActivity(v as Activity)}>
+        <TabsList className="w-full" aria-label="Activity">
+          {ACTIVITIES.map(({ value, label, icon: Icon }) => (
+            <TabsTrigger key={value} value={value} disabled={runner.active && value !== activity}>
+              <Icon aria-hidden="true" /> {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {activity === "match" && (
+        <>
+          <MatchSettingsCard session={session} disabled={false} />
+          <ParticipantsCard session={session} />
+          <RoomSettingsCard settings={settings} onChange={setSettings} timed={false} />
+          <OrchestrateCard client={client} session={session} settings={settings} />
+        </>
+      )}
+
+      {timed && (
+        <>
+          {activity === "cafe" ? (
+            <CafeSettingsCard
+              value={cafe}
+              onChange={(next) => setActivities((a) => ({ ...a, cafe: next }))}
+              people={session.people}
+              disabled={runner.active}
+            />
+          ) : (
+            <SpeedSettingsCard
+              value={speed}
+              onChange={(next) => setActivities((a) => ({ ...a, speed: next }))}
+              disabled={runner.active}
+            />
+          )}
+          <ParticipantsCard session={session} showAnswers={false} />
+          <RoomSettingsCard settings={settings} onChange={setSettings} timed />
+          <RoundControlCard
+            title={activity === "cafe" ? "Run the café" : "Run speed networking"}
+            description="Rounds advance automatically. You can pause, add time or skip ahead."
+            runner={runner}
+            minutes={activity === "cafe" ? cafe.minutes : speed.minutes}
+            canStart={session.candidates.length >= 2}
+            startHint={startHint}
+            onStart={startTimed}
+            config={session.config}
+          />
+        </>
+      )}
+
+      {activity === "fishbowl" && (
+        <FishbowlCard
+          value={activities.fishbowl}
+          onChange={(next) => setActivities((a) => ({ ...a, fishbowl: next }))}
+          people={session.people}
+          fishbowl={fishbowl}
+        />
+      )}
     </>
   )
 }
@@ -344,7 +496,7 @@ export function BreakoutDashboard() {
       {zoom.isHostOrCoHost ? (
         <HostPanel client={zoom.client} selfUuid={zoom.user.participantUUID} />
       ) : (
-        <AttendeePanel client={zoom.client} />
+        <AttendeePanel client={zoom.client} selfUuid={zoom.user.participantUUID} />
       )}
     </div>
   )

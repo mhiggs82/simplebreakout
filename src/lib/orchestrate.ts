@@ -20,6 +20,8 @@ export interface AssignmentFailure {
 export interface OrchestrationResult {
   assigned: number
   failures: AssignmentFailure[]
+  /** Room name → Zoom breakout room id, for people who join a room themselves. */
+  roomIds: Record<string, string>
 }
 
 export class OrchestrationError extends Error {}
@@ -85,5 +87,11 @@ export async function orchestrate(
   await client.openBreakoutRooms()
   onProgress({ step: "done", assigned, total })
 
-  return { assigned, failures }
+  const roomIds = Object.fromEntries(
+    plan.rooms.flatMap((room, index) => {
+      const uuid = idByName.get(room.name) ?? created.rooms[index]?.breakoutRoomId
+      return uuid ? [[room.name, uuid]] : []
+    }),
+  )
+  return { assigned, failures, roomIds }
 }

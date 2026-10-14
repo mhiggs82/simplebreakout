@@ -27,6 +27,8 @@ export interface MatchConfig {
   matchOn: string[]
   /** Attributes mode: put alike people together, or spread each answer across rooms. */
   attributeStrategy: AttributeStrategy
+  /** Names for rooms that would otherwise be numbered ("Room 1", "Table 2"…), used in order. */
+  roomLabels: string[]
 }
 
 /** A participant's answers to the role / category questions. */
@@ -49,4 +51,21 @@ export interface PlannedRoom {
 export interface MatchPlan {
   rooms: PlannedRoom[]
   warnings: string[]
+}
+
+/** The facilitation format the host is running. */
+export type Activity = "match" | "cafe" | "speed" | "fishbowl"
+
+/** A named World Café table. Pinned people (e.g. the Table Host) stay put every round. */
+export interface TableDef {
+  id: string
+  name: string
+  pinned: string[]
+}
+
+export interface RoundSettings {
+  rounds: number
+  minutes: number
+  /** One prompt per round; the last one repeats if there are more rounds than prompts. */
+  prompts: string[]
 }

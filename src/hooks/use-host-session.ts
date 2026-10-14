@@ -28,6 +28,7 @@ export const DEFAULT_CONFIG: MatchConfig = {
   ],
   matchOn: ["language", "childAge"],
   attributeStrategy: "similar",
+  roomLabels: [],
 }
 
 // The host's roles and questions are reused across meetings on this device.

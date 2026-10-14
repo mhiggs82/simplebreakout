@@ -80,6 +80,39 @@ The host's roles and questions are saved in the browser, so they're ready next m
 
 ---
 
+## Audience Interactions
+
+Pick an activity from the tabs at the top of the host panel. Your tables, prompts and timings are remembered on this device.
+
+### World Café
+Themed tables with a **Table Host who stays put**, while everyone else ("travellers") moves to a new table each round.
+* Name each table (e.g. *Sustainability*, *Scaling*) and pin a Table Host to it. The host can be anyone: an attendee, a co-host, or you.
+* Set the number of rotations, minutes per round, and one prompt per round.
+* Travellers are spread evenly. Each round prefers tables they haven't visited yet and people they haven't met.
+* **Hosts and co-hosts can't be moved by the Zoom SDK.** So when one of them is pinned, their own SimpleBreakout panel joins the table for them (`changeBreakoutRoom`). They need the app open.
+
+### Speed Networking
+Short timed rounds of pairs or small groups.
+* Every round reshuffles people to avoid repeat pairings. For example, 8 people in pairs can do 7 rounds where everyone meets everyone exactly once.
+* Optional icebreaker prompts (**Add icebreakers** inserts a starter set) and optional room names.
+
+### Round prompts and timers (World Café and Speed Networking)
+* Rounds advance automatically: rooms open → countdown → rooms close (with Zoom's closing countdown) → the next rotation is calculated → rooms reopen.
+* Host controls: **Pause/Resume**, **+2 min**, **Next round**, **End**.
+* Attendees see the round number, a live countdown and the round's prompt in their app panel, plus a "1 minute left" warning.
+
+### Fishbowl
+A small inner circle talks on the **main stage** while everyone else watches.
+* Choose up to 9 speakers and click **Put on stage**. The app spotlights them (`addParticipantSpotlight`).
+* Observers tap **Ask to join the circle** in their panel. You see a queue of raised hands and click **Swap in** to replace a current speaker.
+* Spotlight needs each speaker's video on. Use Zoom's *Mute all* to keep observers quiet.
+
+### Things to confirm in a real meeting
+* When **you** are pinned to a café table, you move into that breakout room. Zoom lets hosts manage rooms from inside one, but test that the timer keeps running from there.
+* Whether `sendMessage` reaches people already in breakout rooms. If it doesn't, prompts still arrive as each round starts (before people move), and Zoom's own closing countdown still warns everyone.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -108,11 +141,14 @@ The SDK only works inside the Zoom client. To work on the UI in a normal browser
 * `https://localhost:5173/?mock=host`: host dashboard with 20 simulated participants. When you send questions, most of them answer within a couple of seconds, and orchestration runs against a simulated Zoom.
 * `https://localhost:5173/?mock=coHost`: co-host view
 * `https://localhost:5173/?mock=attendee`: attendee view. A simulated host sends questions after a moment.
+* `?mock=attendee&scenario=round`: attendee during a café round (prompt, countdown, 1-minute warning).
+* `?mock=attendee&scenario=fishbowl`: attendee watching a Fishbowl, with the raise-hand button.
+* Add `&fast=1` to make simulated rooms close quickly.
 
 ### Configure the Zoom App (Marketplace)
 1. **Home URL / OAuth Redirect URL:** `https://localhost:5173`
 2. **Domain Allow List:** add `localhost`
-3. **Features → Zoom App SDK:** enable the APIs listed in `ZOOM_CAPABILITIES` in `src/hooks/use-zoom-sdk.tsx` (`getMeetingContext`, `getUserContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `sendMessage`, `onMessage`, `sendAppInvitationToAllParticipants`, `onMyUserContextChange`, …). `sendMessage` needs Zoom desktop client 5.15.5 or later.
+3. **Features → Zoom App SDK:** enable the APIs listed in `ZOOM_CAPABILITIES` in `src/hooks/use-zoom-sdk.tsx` (`getMeetingContext`, `getUserContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `sendMessage`, `onMessage`, `sendAppInvitationToAllParticipants`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`, `onMyUserContextChange`, …). `sendMessage` needs Zoom desktop client 5.15.5 or later.
 4. **Scopes:** `zoomapp:inmeeting`
 5. Add the app to your account (**Local Test → Add App Now**), start a meeting, and open it from the **Apps** panel.
 
@@ -142,16 +178,26 @@ src/
 ├── hooks/
 │   ├── use-zoom-sdk.tsx             # config() → connect() → meeting/user context, role check
 │   ├── use-host-session.ts          # Participants, questions, collected answers (host)
-│   └── use-attendee-session.ts      # Receive questions, send answers (attendee)
+│   ├── use-attendee-session.ts      # Questions, round prompts/timer, Fishbowl hand (attendee)
+│   ├── use-activity-settings.ts     # Activity choice + café/speed/fishbowl settings (saved)
+│   ├── use-round-runner.ts          # React wrapper around the round runner
+│   ├── use-seat-listener.ts         # Pinned hosts/co-hosts join their table themselves
+│   └── use-fishbowl.ts              # Spotlight stage + raised-hand queue (host)
 ├── components/
 │   ├── breakout-dashboard.tsx       # Host vs attendee layout, room settings, orchestration
 │   ├── match-settings-card.tsx      # Mode tabs, roles editor, questions editor
 │   ├── participants-card.tsx        # Include/exclude, answers, host overrides
 │   ├── room-plan.tsx                # Preview of planned rooms
-│   ├── attendee-panel.tsx           # Attendee question form
+│   ├── cafe-settings-card.tsx       # Named tables, pinned Table Hosts, rotations
+│   ├── speed-settings-card.tsx      # Group size, rounds, icebreakers, room names
+│   ├── round-control-card.tsx       # Start, countdown, pause / +2 min / next / end
+│   ├── fishbowl-card.tsx            # Stage, raised hands, swap in
+│   ├── attendee-panel.tsx           # Attendee questions, round prompt, Fishbowl
 │   └── ui/                          # shadcn/ui primitives
 └── lib/
     ├── matchmaking/engine.ts        # Pure matching logic for all three modes (+ tests)
+    ├── matchmaking/rounds.ts        # No-repeat speed rounds, café rotations (+ tests)
+    ├── round-runner.ts              # Timed rounds state machine (+ tests)
     ├── orchestrate.ts               # create → configure → assign → open (+ tests)
     ├── messages.ts                  # sendMessage protocol, validation, 1 KB check (+ tests)
     ├── zoom-client.ts               # SDK surface used + in-browser mock
@@ -174,10 +220,12 @@ if (zoom.status === "ready" && zoom.isHostOrCoHost) {
 
 ## Roadmap
 - [x] Matchmaking engine: random, roles and attributes modes
-- [x] One-click orchestration: `createBreakoutRooms` → `configureBreakoutRooms` → `assignParticipantToBreakoutRoom` (per participant) → `openBreakoutRooms`
+- [x] One-click orchestration with progress and per-person error reporting
 - [x] Attendee self-selection via `sendMessage`
-- [x] Progress UI and per-person error reporting for partial assignments
-- [ ] Multiple rounds (speed networking) with a round timer and no repeat pairings
-- [ ] Visual Breakouts: attendees pick a labelled table themselves
+- [x] World Café: named tables, pinned Table Hosts, rotating travellers
+- [x] Speed Networking: timed rounds with no repeat pairings and icebreakers
+- [x] Round prompts, live countdown and 1-minute warning
+- [x] Fishbowl on the main stage with raised hands and swap-in
+- [ ] Open Space / pick-a-table: attendees choose named tables (with seat limits) themselves
+- [ ] Polls and word clouds between rounds, with a harvest round to bring insights back
 - [ ] Strict matching option (leave people in the main room rather than mix)
-- [ ] Optional backend if answers need to outlive the meeting

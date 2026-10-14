@@ -16,6 +16,7 @@ const config: MatchConfig = {
   ],
   matchOn: ["country"],
   attributeStrategy: "similar",
+  roomLabels: [],
 }
 
 describe("messages", () => {
@@ -50,5 +51,33 @@ describe("messages", () => {
 
   it("has no questionnaire in random mode", () => {
     expect(questionnaireFor({ ...config, mode: "random" }, "s1")).toBeNull()
+  })
+})
+
+describe("interaction messages", () => {
+  const messages = [
+    { type: "round" as const, round: { activity: "cafe" as const, number: 2, total: 3, prompt: "What surprised you?", endsAt: 1_700_000_000_000 } },
+    { type: "round" as const, round: { activity: "speed" as const, number: 1, total: 5, prompt: undefined, endsAt: null } },
+    { type: "warning" as const, secondsLeft: 60 },
+    { type: "ended" as const },
+    { type: "seat" as const, participantUUID: "p1", roomUuid: "room-1", roomName: "Scaling" },
+    { type: "fishbowl" as const, inner: ["a", "b"] },
+    { type: "raise" as const },
+    { type: "lower" as const },
+  ]
+
+  it.each(messages)("round-trips $type", (message) => {
+    expect(decode(encode(message))).toEqual(message)
+  })
+
+  it("rejects malformed rounds and oversized fishbowls", () => {
+    expect(decode({ t: "sb1/round", a: "cafe", n: 0, o: 3, e: null })).toBeNull()
+    expect(decode({ t: "sb1/round", a: "fishbowl", n: 1, o: 3, e: null })).toBeNull()
+    expect(decode({ t: "sb1/fishbowl", i: Array(10).fill("x") })).toBeNull()
+  })
+
+  it("keeps a full fishbowl stage under the size limit", () => {
+    const inner = Array.from({ length: 9 }, () => "abcdefgh-1234-5678-9abc-def012345678")
+    expect(byteSize(encode({ type: "fishbowl", inner }))).toBeLessThan(MAX_MESSAGE_BYTES)
   })
 })

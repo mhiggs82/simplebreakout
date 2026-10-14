@@ -27,6 +27,7 @@ const base: MatchConfig = {
   ],
   matchOn: ["lang", "age"],
   attributeStrategy: "similar",
+  roomLabels: [],
 }
 
 function people(count: number, make: (i: number) => Partial<Candidate> = () => ({})): Candidate[] {
@@ -209,6 +210,19 @@ describe("room names", () => {
     ]
     const plan = buildMatchPlan(input, { ...base, mode: "attributes", groupSize: 4 }, seeded(15))
     expect(plan.rooms).toHaveLength(1)
+    expect(plan.rooms[0].name).toBe("English · 0-4")
+  })
+})
+
+describe("room labels", () => {
+  it("replace numbered names in order and leave the rest numbered", () => {
+    const plan = buildMatchPlan(people(8), { ...base, groupSize: 2, roomLabels: ["Lagos", " ", "Lima"] }, seeded(16))
+    expect(plan.rooms.map((r) => r.name)).toEqual(["Lagos", "Lima", "Room 3", "Room 4"])
+  })
+
+  it("don't rename rooms named after a shared answer", () => {
+    const input = people(4, () => ({ tags: { lang: "English", age: "0-4" } }))
+    const plan = buildMatchPlan(input, { ...base, mode: "attributes", roomLabels: ["Lagos"] }, seeded(17))
     expect(plan.rooms[0].name).toBe("English · 0-4")
   })
 })

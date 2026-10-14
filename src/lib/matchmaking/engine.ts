@@ -229,8 +229,19 @@ function matchAttributes(
   })
 }
 
+/** Replace generic numbered names with the host's labels, in order. */
+function applyLabels(rooms: PlannedRoom[], labels: string[] = []): PlannedRoom[] {
+  const usable = labels.map((l) => l.trim()).filter(Boolean)
+  let next = 0
+  return rooms.map((room) =>
+    /^(Room|Table|Mixed) \d+$/.test(room.name) && next < usable.length
+      ? { ...room, name: usable[next++] }
+      : room,
+  )
+}
+
 /** Zoom matches rooms by name, so names must be unique and non-empty. */
-function uniqueNames(rooms: PlannedRoom[]): PlannedRoom[] {
+export function uniqueNames(rooms: PlannedRoom[]): PlannedRoom[] {
   const seen = new Map<string, number>()
   return rooms.map((room) => {
     const base = room.name.trim().slice(0, 40) || "Room"
@@ -258,5 +269,5 @@ export function buildMatchPlan(
         ? matchAttributes(people, safeConfig, rng, warnings)
         : matchRandom(people, safeConfig, rng)
 
-  return { rooms: uniqueNames(rooms.filter((r) => r.members.length > 0)), warnings }
+  return { rooms: uniqueNames(applyLabels(rooms.filter((r) => r.members.length > 0), config.roomLabels)), warnings }
 }

@@ -28,7 +28,7 @@ describe("orchestrate", () => {
 
     const result = await orchestrate(client, plan, { automaticallyMoveParticipantsIntoRooms: true })
 
-    expect(result).toEqual({ assigned: 4, failures: [] })
+    expect(result).toEqual({ assigned: 4, failures: [], roomIds: { "Room 1": "room-1", "Room 2": "room-2" } })
     expect(calls).toEqual([
       "createBreakoutRooms",
       "configureBreakoutRooms",

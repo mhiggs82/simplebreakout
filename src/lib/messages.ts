@@ -1,13 +1,17 @@
 import type { JSONObject } from "@zoom/appssdk"
 
-import type { Answers, CategoryDef, MatchConfig, MatchMode, RoleDef } from "@/lib/matchmaking/types"
+import type { Activity, Answers, CategoryDef, MatchConfig, MatchMode, RoleDef } from "@/lib/matchmaking/types"
 
 /**
  * Host ↔ attendee protocol over `zoomSdk.sendMessage`, which broadcasts to
  * every participant who has the app open. Payloads are capped at 1 KB.
  *
- * - host → all: `config` (the questions to answer) and `started` (rooms open)
- * - attendee → all: `hello` (asks the host to resend the questions) and `answer`
+ * - host → all: `config` (the questions to answer), `started` (rooms open),
+ *   `round` (round number, prompt, end time), `warning` (closing soon),
+ *   `ended` (activity over), `seat` (tells one host/co-host which room to
+ *   join themselves) and `fishbowl` (who is on stage)
+ * - attendee → all: `hello` (asks the host to resend the questions),
+ *   `answer`, and `raise` / `lower` (Fishbowl: ask to join the circle)
  *
  * Everyone receives every message, so each side ignores the ones not meant
  * for it, and the host validates answers against its own config.
@@ -30,6 +34,24 @@ export type Message =
   | { type: "started"; sessionId: string }
   | { type: "hello" }
   | { type: "answer"; sessionId: string; answers: Answers }
+  | { type: "round"; round: RoundInfo }
+  | { type: "warning"; secondsLeft: number }
+  | { type: "ended" }
+  | { type: "seat"; participantUUID: string; roomUuid: string; roomName: string }
+  | { type: "fishbowl"; inner: string[] }
+  | { type: "raise" }
+  | { type: "lower" }
+
+/** What attendees see during a timed round. */
+export interface RoundInfo {
+  activity: Exclude<Activity, "match" | "fishbowl">
+  /** 1-based round number. */
+  number: number
+  total: number
+  prompt?: string
+  /** Epoch milliseconds when the round closes (null while paused). */
+  endsAt: number | null
+}
 
 export function questionnaireFor(config: MatchConfig, sessionId: string): Questionnaire | null {
   if (config.mode === "random") return null
@@ -56,7 +78,27 @@ export function encode(message: Message): JSONObject {
     case "started":
       return { t: PREFIX + "started", s: message.sessionId }
     case "hello":
-      return { t: PREFIX + "hello" }
+    case "ended":
+    case "raise":
+    case "lower":
+      return { t: PREFIX + message.type }
+    case "round": {
+      const r = message.round
+      return {
+        t: PREFIX + "round",
+        a: r.activity,
+        n: r.number,
+        o: r.total,
+        e: r.endsAt,
+        ...(r.prompt ? { p: r.prompt } : {}),
+      }
+    }
+    case "warning":
+      return { t: PREFIX + "warning", s: message.secondsLeft }
+    case "seat":
+      return { t: PREFIX + "seat", u: message.participantUUID, r: message.roomUuid, n: message.roomName }
+    case "fishbowl":
+      return { t: PREFIX + "fishbowl", i: message.inner }
     case "answer":
       return {
         t: PREFIX + "answer",
@@ -104,7 +146,33 @@ export function decode(payload: unknown): Message | null {
     case "started":
       return isString(p.s) ? { type: "started", sessionId: p.s } : null
     case "hello":
-      return { type: "hello" }
+    case "ended":
+    case "raise":
+    case "lower":
+      return { type: p.t.slice(PREFIX.length) as "hello" | "ended" | "raise" | "lower" }
+    case "round": {
+      const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0 && (v as number) < 1000
+      if ((p.a !== "cafe" && p.a !== "speed") || !isCount(p.n) || !isCount(p.o)) return null
+      if (p.e !== null && typeof p.e !== "number") return null
+      return {
+        type: "round",
+        round: {
+          activity: p.a,
+          number: p.n,
+          total: p.o,
+          endsAt: p.e,
+          prompt: isString(p.p) ? p.p : undefined,
+        },
+      }
+    }
+    case "warning":
+      return typeof p.s === "number" && p.s >= 0 ? { type: "warning", secondsLeft: p.s } : null
+    case "seat":
+      return isString(p.u) && isString(p.r) && isString(p.n)
+        ? { type: "seat", participantUUID: p.u, roomUuid: p.r, roomName: p.n }
+        : null
+    case "fishbowl":
+      return isStringArray(p.i) && p.i.length <= 9 ? { type: "fishbowl", inner: p.i } : null
     case "answer": {
       if (!isString(p.s) || typeof p.g !== "object" || p.g === null) return null
       const tags: Record<string, string> = {}

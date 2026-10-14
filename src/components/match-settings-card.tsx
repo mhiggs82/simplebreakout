@@ -1,6 +1,7 @@
 import { Plus, Send, Shuffle, Tags, Trash2, UserPlus, Users } from "lucide-react"
 import { useId, useState } from "react"
 
+import { LinesField } from "@/components/round-fields"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -245,6 +246,15 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
               <AttributesEditor config={config} update={update} />
             </TabsContent>
           </Tabs>
+
+          <LinesField
+            label="Room names (optional)"
+            hint="One per line. Replaces numbered names like Room 1 or Table 2, in order."
+            value={config.roomLabels ?? []}
+            maxLength={40}
+            placeholder={"Lagos\nLima"}
+            onChange={(roomLabels) => update({ roomLabels })}
+          />
 
           {!groupSizeUnused && (
             <div className="flex items-center justify-between gap-4">

@@ -1,4 +1,4 @@
-import { CheckCircle2, DoorOpen, Hourglass, Loader2 } from "lucide-react"
+import { AlarmClock, CheckCircle2, DoorOpen, Fish, Hand, Hourglass, Loader2, MessageCircle } from "lucide-react"
 import { useId, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useAttendeeSession } from "@/hooks/use-attendee-session"
+import { formatClock, useNow } from "@/hooks/use-now"
+import { useSeatListener } from "@/hooks/use-seat-listener"
 import type { Answers } from "@/lib/matchmaking/types"
-import type { Questionnaire } from "@/lib/messages"
+import type { Questionnaire, RoundInfo } from "@/lib/messages"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 function Choice({
@@ -96,8 +98,114 @@ function QuestionForm({
   )
 }
 
-export function AttendeePanel({ client }: { client: ZoomClient }) {
-  const { questionnaire, submitted, started, submit } = useAttendeeSession(client)
+function RoundCard({ round, warning }: { round: RoundInfo; warning: number | null }) {
+  const now = useNow(round.endsAt !== null)
+  const left = round.endsAt !== null ? round.endsAt - now : null
+  const label = round.activity === "cafe" ? "World Café" : "Speed Networking"
+  return (
+    <Card role="status">
+      <CardHeader>
+        <CardDescription>
+          {label} · Round {round.number} of {round.total}
+        </CardDescription>
+        <CardTitle className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2"><MessageCircle className="size-5" aria-hidden="true" /> This round</span>
+          <span className="font-mono text-2xl tabular-nums" aria-label={left === null ? "Paused" : `${formatClock(left)} left`}>
+            {left === null ? "Paused" : formatClock(left)}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {round.prompt ? (
+          <blockquote className="rounded-lg bg-muted p-4 text-lg leading-snug">{round.prompt}</blockquote>
+        ) : (
+          <p className="text-sm text-muted-foreground">Enjoy the conversation!</p>
+        )}
+        {warning !== null && (
+          <p role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/40 p-3 text-sm">
+            <AlarmClock className="size-4 text-destructive" aria-hidden="true" />
+            About {Math.round(warning / 60) || 1} minute left: start wrapping up.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function FishbowlAttendeeCard({
+  onStage,
+  handRaised,
+  stageSize,
+  onHand,
+}: {
+  onStage: boolean
+  handRaised: boolean
+  stageSize: number
+  onHand: (raised: boolean) => Promise<void>
+}) {
+  const [sending, setSending] = useState(false)
+  return (
+    <Card role="status">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Fish className="size-5" aria-hidden="true" /> Fishbowl</CardTitle>
+        <CardDescription>
+          {onStage
+            ? "You're in the inner circle. Unmute and join the conversation!"
+            : `${stageSize} people are talking on stage. Listen in, and ask for a seat when you'd like to speak.`}
+        </CardDescription>
+      </CardHeader>
+      {!onStage && (
+        <CardFooter>
+          <Button
+            size="lg"
+            className="w-full"
+            variant={handRaised ? "outline" : "default"}
+            aria-pressed={handRaised}
+            disabled={sending}
+            onClick={() => {
+              setSending(true)
+              onHand(!handRaised).finally(() => setSending(false))
+            }}
+          >
+            <Hand /> {handRaised ? "Lower my hand" : "Ask to join the circle"}
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  )
+}
+
+export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUuid: string }) {
+  const session = useAttendeeSession(client, selfUuid)
+  const seat = useSeatListener(client, selfUuid)
+  const { questionnaire, submitted, started, submit } = session
+
+  const seatBanner = seat && (
+    <p role="status" className="rounded-lg border p-3 text-sm">
+      You're the host of <strong>{seat.roomName}</strong>: you stay at this table while others rotate.
+      {seat.error && <span className="block text-destructive">{seat.error}</span>}
+    </p>
+  )
+
+  if (session.stage !== null) {
+    return (
+      <FishbowlAttendeeCard
+        onStage={session.onStage}
+        handRaised={session.handRaised}
+        stageSize={session.stage.length}
+        onHand={session.setHand}
+      />
+    )
+  }
+
+  if (session.round) {
+    return (
+      <>
+        {seatBanner}
+        <RoundCard round={session.round} warning={session.warning} />
+      </>
+    )
+  }
 
   if (started) {
     return (
@@ -116,7 +224,7 @@ export function AttendeePanel({ client }: { client: ZoomClient }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Hourglass className="size-5" /> Waiting for the host</CardTitle>
           <CardDescription>
-            Keep this panel open. If the host asks questions before matching, they'll appear here.
+            Keep this panel open. Questions, round prompts and timers from the host will appear here.
           </CardDescription>
         </CardHeader>
       </Card>

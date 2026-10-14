@@ -13,6 +13,10 @@ export type ZoomClient = Pick<
   | "getBreakoutRoomList"
   | "sendMessage"
   | "sendAppInvitationToAllParticipants"
+  | "changeBreakoutRoom"
+  | "addParticipantSpotlight"
+  | "removeParticipantSpotlights"
+  | "getParticipantSpotlights"
   | "addEventListener"
   | "removeEventListener"
 >
@@ -29,13 +33,26 @@ const MOCK_NAMES = [
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const ok = { message: "Success" as const }
 
+/** What a simulated host does for a mock attendee (`?mock=attendee&scenario=...`). */
+export type MockScenario = "questions" | "round" | "fishbowl"
+
+export interface MockOptions {
+  scenario?: MockScenario
+  /** How long rooms take to close after closeBreakoutRooms (Zoom's countdown). */
+  closeDelayMs?: number
+}
+
 /**
  * In-browser stand-in for the Zoom client (`?mock=...`). It simulates a
  * meeting of 20 people; when the host sends questions, most of them answer
- * with random choices a moment later. When `asAttendee` is set, a host
- * "sends" a questionnaire shortly after the app opens.
+ * with random choices a moment later, and when a Fishbowl starts a few raise
+ * their hands. For a mock attendee, a simulated host acts out `scenario`.
  */
-export function createMockZoomClient(self: Participant, asAttendee: boolean): ZoomClient {
+export function createMockZoomClient(
+  self: Participant,
+  asAttendee: boolean,
+  { scenario = "questions", closeDelayMs = 1500 }: MockOptions = {},
+): ZoomClient {
   const listeners = new Map<string, Set<Listener>>()
   const emit = (event: string, data: unknown) =>
     listeners.get(event)?.forEach((listener) => listener(data))
@@ -50,6 +67,13 @@ export function createMockZoomClient(self: Participant, asAttendee: boolean): Zo
     })),
   ]
   let rooms: BreakoutRoomsResponse = { rooms: [], state: "closed", unassigned: [] }
+  let spotlights: string[] = []
+  let handsRaised = false
+  const fromHost = (payload: Record<string, unknown>, after: number) =>
+    setTimeout(
+      () => emit("onMessage", { timestamp: Date.now(), participantUUID: "mock-host", payload }),
+      after,
+    )
 
   const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]
 
@@ -74,25 +98,37 @@ export function createMockZoomClient(self: Participant, asAttendee: boolean): Zo
     })
   }
 
-  if (asAttendee) {
-    setTimeout(
-      () =>
-        emit("onMessage", {
-          timestamp: Date.now(),
-          participantUUID: "mock-host",
-          payload: {
-            t: "sb1/config",
-            s: "mock-session",
-            m: "attributes",
-            r: [],
-            c: [
-              ["country", "Country", ["United States", "United Kingdom", "Netherlands", "Other"]],
-              ["language", "Language", ["English", "Spanish", "Arabic", "Other"]],
-              ["childAge", "Child's age", ["0–4", "5–11", "12–14", "15–18"]],
-            ],
-          },
-        }),
+  if (asAttendee && scenario === "questions") {
+    fromHost(
+      {
+        t: "sb1/config",
+        s: "mock-session",
+        m: "attributes",
+        r: [],
+        c: [
+          ["country", "Country", ["United States", "United Kingdom", "Netherlands", "Other"]],
+          ["language", "Language", ["English", "Spanish", "Arabic", "Other"]],
+          ["childAge", "Child's age", ["0–4", "5–11", "12–14", "15–18"]],
+        ],
+      },
       800,
+    )
+  } else if (asAttendee && scenario === "round") {
+    const endsAt = Date.now() + 66_000
+    fromHost({ t: "sb1/round", a: "cafe", n: 2, o: 3, e: endsAt, p: "What would change if we started over tomorrow?" }, 800)
+    fromHost({ t: "sb1/warning", s: 60 }, 6_000)
+  } else if (asAttendee && scenario === "fishbowl") {
+    fromHost({ t: "sb1/fishbowl", i: ["mock-1", "mock-2", "mock-3", "mock-4"] }, 800)
+  }
+
+  function raiseSomeHands() {
+    if (handsRaised) return
+    handsRaised = true
+    participants.slice(5, 8).forEach((p, i) =>
+      setTimeout(
+        () => emit("onMessage", { timestamp: Date.now(), participantUUID: p.participantUUID, payload: { t: "sb1/raise" } }),
+        800 + i * 700,
+      ),
     )
   }
 
@@ -132,8 +168,11 @@ export function createMockZoomClient(self: Participant, asAttendee: boolean): Zo
       return ok
     },
     async closeBreakoutRooms() {
-      await delay(300)
-      rooms = { ...rooms, state: "closed" }
+      if (rooms.state !== "open") throw { code: "10092", message: "Breakout Rooms are not open." }
+      // Like Zoom, rooms finish closing after the countdown.
+      setTimeout(() => {
+        rooms = { ...rooms, state: "closed" }
+      }, closeDelayMs)
       return ok
     },
     async getBreakoutRoomList() {
@@ -142,7 +181,26 @@ export function createMockZoomClient(self: Participant, asAttendee: boolean): Zo
     async sendMessage({ payload }) {
       await delay(50)
       if (!asAttendee && payload.t === "sb1/config") answerQuestionnaire(payload)
+      if (!asAttendee && payload.t === "sb1/fishbowl") raiseSomeHands()
       return ok
+    },
+    async changeBreakoutRoom() {
+      await delay(100)
+      return ok
+    },
+    async addParticipantSpotlight({ participantUUID }) {
+      await delay(60)
+      if (spotlights.length >= 9) throw { code: "10230", message: "Too many users spotlighted (maximum: 9)" }
+      if (!spotlights.includes(participantUUID)) spotlights = [...spotlights, participantUUID]
+      return ok
+    },
+    async removeParticipantSpotlights({ participantUUIDs }) {
+      await delay(60)
+      spotlights = spotlights.filter((uuid) => !participantUUIDs.includes(uuid))
+      return ok
+    },
+    async getParticipantSpotlights() {
+      return { participantUUIDs: spotlights }
     },
     async sendAppInvitationToAllParticipants() {
       return { invitationUUID: "mock-invitation" }
