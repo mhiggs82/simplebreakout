@@ -177,6 +177,7 @@ The SDK only works inside the Zoom client. To work on the UI in a normal browser
 * `?mock=attendee&scenario=fishbowl`: attendee watching a Fishbowl, with the raise-hand button.
 * `?mock=attendee&scenario=poll`, `cloud`, `spectrum`, `openspace` or `gallery`: the attendee side of each More format.
 * Add `&fast=1` to make simulated rooms close quickly.
+* Stress-test flags for `?mock=host`: `people=N` (meeting size, 1–200), `cohosts=K`, `churn=1` (people keep joining and leaving), `chaos=1` (about 10% of SDK calls fail, and rooms close slowly). For example: `?mock=host&fast=1&people=60&cohosts=2&churn=1&chaos=1`.
 
 ### Configure the Zoom App (Marketplace)
 1. **Home URL / OAuth Redirect URL:** `https://localhost:5173`
