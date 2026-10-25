@@ -13,6 +13,7 @@ export type ZoomClient = Pick<
   | "getBreakoutRoomList"
   | "sendMessage"
   | "sendAppInvitationToAllParticipants"
+  | "sendMessageToChat"
   | "changeBreakoutRoom"
   | "addParticipantSpotlight"
   | "removeParticipantSpotlights"
@@ -163,9 +164,8 @@ export function createMockZoomClient(
         m: "attributes",
         r: [],
         c: [
-          ["country", "Country", ["United States", "United Kingdom", "Netherlands", "Other"]],
-          ["language", "Language", ["English", "Spanish", "Arabic", "Other"]],
-          ["childAge", "Child's age", ["0–4", "5–11", "12–14", "15–18"]],
+          ["level", "Level", ["A2", "B1", "B2", "C1"]],
+          ["firstLanguage", "First language", ["Arabic", "Spanish", "Chinese", "Other"]],
         ],
       },
       800,
@@ -180,7 +180,7 @@ export function createMockZoomClient(
     fromHost({ t: "sb1/tables", s: "demo", n: 4, r: [["room-1", "Funding ideas", 3, 6], ["room-2", "Tools we love", 6, 6], ["room-3", "Hiring", 1, 0], ["room-4", "Wild card", 0, 4]] }, 800)
   } else if (asAttendee && scenario === "gallery") {
     fromHost({ t: "sb1/round", a: "gallery", n: 2, o: 4, e: Date.now() + 300_000, p: "What's missing from this idea?", l: "Station 2 of 4", h: 1 }, 800)
-    fromHost({ t: "sb1/station", r: "Onboarding", m: [self.participantUUID], n: ["Pair new joiners with a buddy", "A first-week checklist"] }, 1_000)
+    fromHost({ t: "sb1/station", r: "Text A", m: [self.participantUUID], n: ["Main idea: remote learning needs routine", "Key word: self-discipline"] }, 1_000)
   }
 
   /** In harvest steps, one person per room sends an insight. */
@@ -300,6 +300,12 @@ export function createMockZoomClient(
     },
     async sendAppInvitationToAllParticipants() {
       return { invitationUUID: "mock-invitation" }
+    },
+    async sendMessageToChat({ message }) {
+      await delay(50)
+      if (flaky()) throw { code: "10038", message: "Failed to post to chat." }
+      console.info(`[mock chat] ${message}`)
+      return { result: [{ channelId: "mock-meeting-chat", messageId: Math.random().toString(36).slice(2) }] }
     },
     addEventListener(event, handler) {
       if (!listeners.has(event)) listeners.set(event, new Set())

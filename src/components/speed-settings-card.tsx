@@ -14,10 +14,10 @@ export function SpeedSettingsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Speed Networking</CardTitle>
+        <CardTitle>Quick pairs</CardTitle>
         <CardDescription>
-          Short timed rounds. Every round reshuffles people so nobody meets the same person twice, for as long as
-          that's possible.
+          Short timed rounds for fluency practice, peer-checking or interviews. Every round finds students a new
+          partner, for as long as that's possible.
         </CardDescription>
       </CardHeader>
       <CardContent>

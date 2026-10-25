@@ -57,12 +57,13 @@ export interface ActivitySettings {
   openSpace: OpenSpaceSettings
 }
 
+/** Ready-made speaking tasks for quick pairs. */
 export const ICEBREAKERS = [
-  "What's something you're looking forward to this month?",
-  "What's a small win you had this week?",
-  "What's one thing people usually get wrong about your work?",
-  "Share a book, show or podcast you'd recommend, and why.",
-  "What's a question you wish more people asked you?",
+  "Compare your answers. Where you disagree, explain why.",
+  "Tell your partner about a time you… Ask two follow-up questions.",
+  "Agree on the three most important points from the presentation.",
+  "Use today's new language in three sentences about your own life.",
+  "What's still unclear? Agree on one question to ask the teacher.",
 ]
 
 export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
@@ -77,9 +78,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     rounds: 3,
     minutes: 15,
     prompts: [
-      "What question, if answered, would make the biggest difference here?",
-      "What patterns are you hearing across tables?",
-      "What's one thing we could try next week?",
+      "Discuss the question on your table. Note your group's best ideas.",
+      "New table: read what the last group said. Agree or disagree?",
+      "Final table: summarise the main points to report back.",
     ],
   },
   speed: { groupSize: 2, rounds: 5, minutes: 3, prompts: ICEBREAKERS.slice(0, 3), roomLabels: [] },
@@ -98,9 +99,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     share: { minutes: 5, prompt: "Share: let's hear the insights from each pair." },
   },
   gallery: {
-    stations: ["Onboarding", "Communication", "Tools", "Wellbeing"],
+    stations: ["Text A", "Text B", "Text C", "Text D"],
     minutes: 6,
-    prompts: ["What's working here?", "What's missing from this idea?", "How could we make it twice as good?"],
+    prompts: ["What is the main idea?", "What did the last group miss?", "Correct or improve one note."],
   },
   openSpace: {
     tables: [

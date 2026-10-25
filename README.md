@@ -82,7 +82,9 @@ The host's roles and questions are saved in the browser, so they're ready next m
 
 ## Audience Interactions
 
-The host panel keeps the everyday formats up front: **Match | Café | Speed**. Everything else is tucked under **More**: 1-2-4-All, Open Space, Think-Pair-Share, Gallery walk and Fishbowl. Your tables, prompts and timings are remembered on this device.
+New to the app? See **[TEACHER-GUIDE.md](TEACHER-GUIDE.md)**, a one-page guide for teachers and CELTA/DELTA trainers.
+
+The host panel opens with **Quick start** lesson presets (Pair check, Role-play pairs, Fluency practice, Mixed-level groups, Think-Pair-Share). Below them, the everyday formats sit up front: **Groups | Pairs | Rotate** (Match, Speed Networking and World Café in the code). Everything else is tucked under **More**: 1-2-4-All, Open Space, Think-Pair-Share, Gallery walk and Fishbowl. Your tables, prompts and timings are remembered on this device.
 
 **You stay in the main room.** For any format that uses breakout rooms, open **Visit a room** in the controls to drop into any room, and **Back to main room** to return.
 
@@ -102,6 +104,8 @@ Short timed rounds of pairs or small groups.
 * Rounds advance automatically: rooms open → countdown → rooms close (with Zoom's closing countdown) → the next rotation is calculated → rooms reopen.
 * Host controls: **Pause/Resume**, **+2 min**, **Next round**, **End**.
 * Attendees see the round number, a live countdown and the round's prompt in their app panel, plus a "1 minute left" warning.
+* **Post the task in Zoom chat** (on by default, under *More options*): each step's prompt and time limit is posted to the meeting chat just before rooms open (`sendMessageToChat`), so students without the app see it too. "Welcome back to the main room." is posted when the rooms close for good.
+* While a round runs, **Copy** next to the prompt puts it on your clipboard, e.g. for Zoom's *Broadcast message to all rooms*.
 
 ### Fishbowl
 A small inner circle talks on the **main stage** while everyone else watches.
@@ -176,7 +180,7 @@ The SDK only works inside the Zoom client. To work on the UI in a normal browser
 ### Configure the Zoom App (Marketplace)
 1. **Home URL / OAuth Redirect URL:** `https://localhost:5173`
 2. **Domain Allow List:** add `localhost`
-3. **Features → Zoom App SDK:** enable the APIs listed in `ZOOM_CAPABILITIES` in `src/hooks/use-zoom-sdk.tsx` (`getMeetingContext`, `getUserContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `sendMessage`, `onMessage`, `sendAppInvitationToAllParticipants`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`, `onMyUserContextChange`, …). `sendMessage` needs Zoom desktop client 5.15.5 or later.
+3. **Features → Zoom App SDK:** enable the APIs listed in `ZOOM_CAPABILITIES` in `src/hooks/use-zoom-sdk.tsx` (`getMeetingContext`, `getUserContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `sendMessage`, `onMessage`, `sendAppInvitationToAllParticipants`, `sendMessageToChat`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`, `onMyUserContextChange`, …). `sendMessage` needs Zoom desktop client 5.15.5 or later.
 4. **Scopes:** `zoomapp:inmeeting`
 5. Add the app to your account (**Local Test → Add App Now**), start a meeting, and open it from the **Apps** panel.
 
@@ -216,7 +220,8 @@ src/
 ├── components/
 │   ├── breakout-dashboard.tsx       # Host vs attendee layout
 │   ├── host-panel.tsx               # Host: activity navigation + wiring for every format
-│   ├── activity-nav.tsx             # Match | Café | Speed | More ▾
+│   ├── activity-nav.tsx             # Groups | Pairs | Rotate | More ▾
+│   ├── lesson-presets-card.tsx      # Quick start: one-click lesson stages
 │   ├── orchestrate-card.tsx         # One-click matching: preview, orchestrate, close
 │   ├── room-settings-card.tsx       # Zoom breakout room options
 │   ├── room-visitor.tsx             # Host visits a room / returns to main room
@@ -236,6 +241,7 @@ src/
     ├── matchmaking/engine.ts        # Pure matching logic for all three modes (+ tests)
     ├── matchmaking/rounds.ts        # Speed rounds, café rotations, 1-2-4 merging, gallery rotation (+ tests)
     ├── round-runner.ts              # Timed steps (rooms or main room) state machine (+ tests)
+    ├── lesson-presets.ts            # Pair check, role-play, fluency, mixed levels, TPS (+ tests)
     ├── orchestrate.ts               # create → configure → assign → open (+ tests)
     ├── messages.ts                  # sendMessage protocol, validation, 1 KB check (+ tests)
     ├── zoom-client.ts               # SDK surface used + in-browser mock

@@ -112,8 +112,8 @@ function QuestionForm({
 }
 
 const ACTIVITY_NAMES: Record<RoundInfo["activity"], string> = {
-  cafe: "World Café",
-  speed: "Speed Networking",
+  cafe: "Rotating tables",
+  speed: "Quick pairs",
   oneTwoFour: "1-2-4-All",
   tps: "Think-Pair-Share",
   gallery: "Gallery walk",
@@ -407,7 +407,8 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Hourglass className="size-5" /> Waiting for the host</CardTitle>
           <CardDescription>
-            Keep this panel open. Questions, round prompts and timers from the host will appear here.
+            Keep this panel open to see tasks and timers here. If you close it, nothing breaks: your teacher
+            moves you to rooms and tasks also appear in the Zoom chat.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -422,7 +423,7 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
           {submitted ? (
             <><CheckCircle2 className="size-4 text-primary" /> Your answers were sent to the host.</>
           ) : (
-            "Your answers help the host match you with the right people."
+            "Your answers help your teacher put you in the right group."
           )}
         </CardDescription>
       </CardHeader>

@@ -4,6 +4,7 @@ import { ActivityNav } from "@/components/activity-nav"
 import { CafeSettingsCard } from "@/components/cafe-settings-card"
 import { FishbowlCard } from "@/components/fishbowl-card"
 import { HarvestBoard } from "@/components/harvest-board"
+import { LessonPresetsCard } from "@/components/lesson-presets-card"
 import { MatchSettingsCard } from "@/components/match-settings-card"
 import { OpenSpaceCard } from "@/components/open-space-card"
 import { OrchestrateCard } from "@/components/orchestrate-card"
@@ -34,6 +35,7 @@ import {
   planSpeedRound,
   promptFor,
 } from "@/lib/matchmaking/rounds"
+import type { LessonPreset } from "@/lib/lesson-presets"
 import type { Activity, Candidate, TimedActivity } from "@/lib/matchmaking/types"
 import type { ZoomClient } from "@/lib/zoom-client"
 
@@ -66,6 +68,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   const seat = useSeatListener(client, selfUuid)
   const harvest = useHarvest(client, runner.state?.plan ?? null, true)
   const [running, setRunning] = useState<TimedActivity | null>(null)
+  const [chat, setChat] = useState(true)
   const [settings, setSettings] = useState<RoomSettings>({
     automaticallyMoveParticipantsIntoRooms: true,
     allowParticipantsReturnToMainSession: true,
@@ -92,6 +95,11 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   const { activity, cafe, speed, oneTwoFour, tps, gallery } = activities
   const locked = runner.active || openSpace.phase === "open" || openSpace.phase === "opening"
   const setActivity = (value: Activity) => setActivities((a) => ({ ...a, activity: value }))
+  const applyPreset = (preset: LessonPreset) => {
+    const next = preset.apply(activities, session.config)
+    setActivities(next.activities)
+    session.setConfig(next.config)
+  }
   const update = <K extends keyof ActivitySettings>(key: K) => (next: ActivitySettings[K]) =>
     setActivities((a) => ({ ...a, [key]: next }))
 
@@ -100,7 +108,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
 
   function optionsFor(kind: TimedActivity): StartOptions {
     const a = latest.current.activities
-    const base = { client, activity: kind, settings: timedSettings, selfUuid }
+    const base = { client, activity: kind, settings: timedSettings, selfUuid, chat }
     switch (kind) {
       case "cafe":
         return {
@@ -203,7 +211,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
       case "cafe": {
         const unhosted = cafe.tables.filter((t) => t.pinned.length === 0).length
         return unhosted > 0
-          ? `${unhosted} table(s) have no Table Host yet.`
+          ? `${unhosted} table(s) have no table host. That's fine: everyone rotates.`
           : `${cafe.rounds} rotations of ${cafe.minutes} min across ${cafe.tables.length} tables.`
       }
       case "speed":
@@ -259,6 +267,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
           You're hosting <strong>{seat.roomName}</strong>.{seat.error && ` ${seat.error}`}
         </p>
       )}
+      {!locked && <LessonPresetsCard onApply={applyPreset} />}
       <ActivityNav value={activity} onChange={setActivity} locked={locked} />
 
       {activity === "match" && (
@@ -278,9 +287,14 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
           ) : (
             <>
               {timedSetup(activity)}
-              <ParticipantsCard session={session} showAnswers={false} />
-              <RoomSettingsCard settings={settings} onChange={setSettings} timed />
               {controls(activity)}
+              <details className="rounded-xl border bg-card p-4 text-sm">
+                <summary className="cursor-pointer font-medium">More options: participants and room settings</summary>
+                <div className="mt-4 space-y-4">
+                  <ParticipantsCard session={session} showAnswers={false} />
+                  <RoomSettingsCard settings={settings} onChange={setSettings} timed chat={chat} onChatChange={setChat} />
+                </div>
+              </details>
             </>
           )}
           {HARVESTING.has(activity) && (

@@ -225,8 +225,11 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Matchmaking</CardTitle>
-        <CardDescription>How should people be grouped?</CardDescription>
+        <CardTitle>Groups</CardTitle>
+        <CardDescription>
+          One set of breakout groups, e.g. after an input stage. Random is fastest; roles suit A/B role-plays;
+          answers let you mix or match by level.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <fieldset disabled={disabled} className="space-y-4">

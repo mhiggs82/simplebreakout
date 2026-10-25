@@ -123,7 +123,7 @@ export function RoundFields({
       />
       <LinesField
         label="Round prompts"
-        hint="One per line, shown in everyone's app panel as each round starts. The last one repeats."
+        hint="One per line, posted in Zoom chat and the app panel as each round starts. The last one repeats."
         value={value.prompts}
         placeholder="What brought you here today?"
         onChange={(prompts) => onChange({ ...value, prompts })}

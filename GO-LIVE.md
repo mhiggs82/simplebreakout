@@ -54,7 +54,7 @@ Sign in at **marketplace.zoom.us** with the Zoom account you'll host meetings fr
    - **Home URL**: `https://breakout.getparentwise.com/`
    - **Domain Allow List**: `breakout.getparentwise.com`
 4. **Features → Zoom App SDK → Add APIs.** Add every API the app uses:
-   `getMeetingContext`, `getUserContext`, `onMyUserContextChange`, `getRunningContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `onBreakoutRoomChange`, `sendMessage`, `onMessage`, `connect`, `onConnect`, `postMessage`, `sendAppInvitationToAllParticipants`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`.
+   `getMeetingContext`, `getUserContext`, `onMyUserContextChange`, `getRunningContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `onBreakoutRoomChange`, `sendMessage`, `onMessage`, `connect`, `onConnect`, `postMessage`, `sendAppInvitationToAllParticipants`, `sendMessageToChat`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`.
 5. **Scopes**: add `zoomapp:inmeeting`.
 6. **Local Test → Add App Now.** Approve the permissions. You'll land on the "added" page.
 7. Open the **Zoom desktop app** (version 5.15.5 or later), start a meeting, click **Apps**, then **Global Breakout**.
@@ -80,7 +80,7 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
 | --- | --- |
 | Match: Random | ✅ Fully |
 | Match: Roles / Attributes | ✅ You set roles and answers for people from the Participants list. Attendees can't answer from their own panel. |
-| World Café, Speed Networking | ✅ Fully. Round prompts appear only for people with the app, so read them aloud or paste them in chat. |
+| Rotating tables (World Café), Quick pairs (Speed) | ✅ Fully. Each round's task is also posted to the Zoom chat, so students without the app see it. |
 | 1-2-4-All, Think-Pair-Share, Gallery walk | ✅ The rooms and rotations work. ❌ Sending insights and notes needs the app. |
 | Open Space | ✅ Self-select is on, so people pick tables from **Zoom's own Breakout Rooms menu**. ❌ The app's table picker with head-counts needs the app. |
 | Fishbowl | ✅ The spotlight stage works. Observers use **Zoom's Raise Hand** instead of the app's button. |
@@ -102,6 +102,7 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
    - Check the co-host's panel says "You're hosting Table 1" and they move automatically.
    - Check the attendee moves each round.
    - Check whether the attendee panel shows the prompt and countdown **while they're inside a room**. This is the key unknown.
+   - Check the task appears in the **Zoom chat** before rooms open, and whether people can still see it once they're inside a room. Also check "Welcome back to the main room." at the end.
 4. **Visit a room:** use **Visit a room** and **Back to main room**.
 5. **Open Space:** open it, then have the attendee pick a table from the app *and* from Zoom's Breakout Rooms menu.
 6. **Fishbowl:** put the co-host on stage. Their video must be on for the spotlight.

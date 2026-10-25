@@ -14,20 +14,20 @@ import type { ZoomClient } from "@/lib/zoom-client"
 
 export const DEFAULT_CONFIG: MatchConfig = {
   mode: "random",
-  groupSize: 4,
+  groupSize: 3,
+  // Classroom defaults: A/B role-plays, and level / first language for mixing groups.
   roles: [
-    { id: "tableHost", label: "Table Host" },
-    { id: "tableGuest", label: "Table Guest" },
+    { id: "studentA", label: "Student A" },
+    { id: "studentB", label: "Student B" },
   ],
-  anchorRoleId: "tableHost",
+  anchorRoleId: null,
   categories: [
-    { id: "country", label: "Country", options: ["United States", "United Kingdom", "Netherlands", "Other"] },
-    { id: "city", label: "City", options: ["New York", "London", "Amsterdam", "Other"] },
-    { id: "childAge", label: "Child's age", options: ["0–4", "5–11", "12–14", "15–18"] },
-    { id: "language", label: "Language", options: ["English", "Spanish", "Arabic", "Other"] },
+    { id: "level", label: "Level", options: ["A2", "B1", "B2", "C1"] },
+    { id: "firstLanguage", label: "First language", options: ["Arabic", "Spanish", "Chinese", "Other"] },
+    { id: "confidence", label: "Speaking confidence", options: ["Low", "Medium", "High"] },
   ],
-  matchOn: ["language", "childAge"],
-  attributeStrategy: "similar",
+  matchOn: ["firstLanguage", "level"],
+  attributeStrategy: "diverse",
   roomLabels: [],
 }
 

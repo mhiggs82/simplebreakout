@@ -32,6 +32,7 @@ const ZOOM_CAPABILITIES: Apis[] = [
   "getMeetingParticipants",
   "onParticipantChange",
   "sendAppInvitationToAllParticipants",
+  "sendMessageToChat",
   "createBreakoutRooms",
   "configureBreakoutRooms",
   "openBreakoutRooms",

@@ -44,10 +44,10 @@ export function CafeSettingsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>World Café</CardTitle>
+        <CardTitle>Rotating tables</CardTitle>
         <CardDescription>
-          Name each table and pin a Table Host who stays put. Everyone else travels to a new table each round,
-          meeting new people.
+          Also called World Café. Give each table a topic and, if you like, pin a table host who stays put
+          (e.g. a stronger student or a co-teacher). Everyone else moves to a new table each round.
         </CardDescription>
       </CardHeader>
       <CardContent>
