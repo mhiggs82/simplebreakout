@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { formatClock, useNow } from "@/hooks/use-now"
 import type { useRoundRunner } from "@/hooks/use-round-runner"
 import type { MatchConfig } from "@/lib/matchmaking/types"
+import { movingText } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 const PHASE_LABELS = {
@@ -75,6 +76,15 @@ export function RoundControlCard({
           </div>
           {left !== null && (
             <Progress value={Math.min(100, (left / roundMs) * 100)} aria-label="Time left in this round" />
+          )}
+          {state.phase === "preparing" && state.moving?.step === "assigning" && (
+            <>
+              <p className="text-sm text-muted-foreground">{movingText(state.moving)}</p>
+              <Progress
+                value={state.moving.total ? (state.moving.assigned / state.moving.total) * 100 : 0}
+                aria-label="Moving people progress"
+              />
+            </>
           )}
           {state.prompt && active && (
             <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">

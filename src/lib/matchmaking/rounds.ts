@@ -1,4 +1,4 @@
-import { MIN_GROUP_SIZE, roomCount, shuffle, uniqueNames, type Rng } from "./engine"
+import { MAX_ROOMS, MIN_GROUP_SIZE, roomCount, roomLimitWarning, shuffle, uniqueNames, type Rng } from "./engine"
 import type { Candidate, MatchPlan, PlannedRoom, TableDef } from "./types"
 
 /** Who has met whom, and which rooms (by name) each person has sat in, across rounds. */
@@ -51,6 +51,10 @@ export function promptFor(prompts: string[], round: number): string | undefined 
 
 const ATTEMPTS = 40
 const SWAP_PASSES = 4
+/** Stop trying more plans after this long, so big meetings don't freeze the panel. */
+const PLAN_BUDGET_MS = 250
+/** Café tables bigger than this get a warning: it's hard to talk in a group that size. */
+const BIG_TABLE = 15
 
 /**
  * Speed networking: balanced groups that avoid pairs who already met.
@@ -72,7 +76,12 @@ export function planSpeedRound(
     Math.floor(people.length / count) + (i < people.length % count ? 1 : 0)
 
   let best: { groups: Candidate[][]; score: number } | null = null
-  for (let attempt = 0; attempt < ATTEMPTS && best?.score !== 0; attempt++) {
+  const started = performance.now()
+  for (
+    let attempt = 0;
+    attempt < ATTEMPTS && best?.score !== 0 && (attempt === 0 || performance.now() - started < PLAN_BUDGET_MS);
+    attempt++
+  ) {
     const groups: Candidate[][] = Array.from({ length: count }, () => [])
     for (const person of shuffle(people, rng)) {
       let target = -1
@@ -89,18 +98,20 @@ export function planSpeedRound(
     }
 
     // Local improvement: swap two people between groups when it removes repeats.
+    // Nobody has "met" themselves, so counting against the whole group is the
+    // same as counting against everyone else in it. Stops when out of time.
     for (let pass = 0; pass < SWAP_PASSES; pass++) {
       let improved = false
-      for (let g = 0; g < count; g++) {
+      for (let g = 0; g < count && (attempt === 0 || performance.now() - started < PLAN_BUDGET_MS); g++) {
+        if (attempt === 0 && pass > 0 && performance.now() - started > PLAN_BUDGET_MS) break
         for (let h = g + 1; h < count; h++) {
           for (let i = 0; i < groups[g].length; i++) {
             for (let j = 0; j < groups[h].length; j++) {
               const a = groups[g][i]
               const b = groups[h][j]
-              const restG = groups[g].filter((_, k) => k !== i)
-              const restH = groups[h].filter((_, k) => k !== j)
-              const before = repeatsWith(history, a, restG) + repeatsWith(history, b, restH)
-              const after = repeatsWith(history, b, restG) + repeatsWith(history, a, restH)
+              const met = hasMet(history, a.uuid, b.uuid) ? 1 : 0
+              const before = repeatsWith(history, a, groups[g]) + repeatsWith(history, b, groups[h])
+              const after = repeatsWith(history, b, groups[g]) - met + repeatsWith(history, a, groups[h]) - met
               if (after < before) {
                 groups[g][i] = b
                 groups[h][j] = a
@@ -121,8 +132,11 @@ export function planSpeedRound(
     name: labels[i]?.trim() || `Room ${i + 1}`,
     members,
   }))
-  const warnings =
-    best!.score > 0 ? [`${best!.score} repeat pairing(s) couldn't be avoided this round.`] : []
+  const limit = roomLimitWarning(people.length, groupSize)
+  const warnings = [
+    ...(limit ? [limit] : []),
+    ...(best!.score > 0 ? [`${best!.score} repeat pairing(s) couldn't be avoided this round.`] : []),
+  ]
   return { rooms: uniqueNames(rooms), warnings }
 }
 
@@ -138,6 +152,9 @@ export function planCafeRound(
   rng: Rng = Math.random,
 ): MatchPlan {
   if (tables.length === 0) return { rooms: [], warnings: ["Add at least one table."] }
+  if (tables.length > MAX_ROOMS) {
+    return { rooms: [], warnings: [`Zoom apps can make up to ${MAX_ROOMS} rooms. Remove some tables.`] }
+  }
   const named = uniqueNames(tables.map((t) => ({ name: t.name, members: [] as Candidate[] })))
   const rooms = named.map((room, i) => ({ ...room, table: tables[i] }))
 
@@ -179,6 +196,10 @@ export function planCafeRound(
 
   const warnings: string[] = []
   if (revisits > 0) warnings.push(`${revisits} traveller(s) revisit a table they've already been to.`)
+  const biggest = Math.max(...rooms.map((r) => r.members.length))
+  if (biggest > BIG_TABLE) {
+    warnings.push(`Tables will have up to ${biggest} people. Add more tables for smaller conversations.`)
+  }
   const unhosted = tables.filter((t) => t.pinned.length === 0).length
   if (unhosted > 0) warnings.push(`${unhosted} table(s) have no pinned host.`)
 

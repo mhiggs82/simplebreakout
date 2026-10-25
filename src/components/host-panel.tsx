@@ -26,7 +26,7 @@ import { useHostSession } from "@/hooks/use-host-session"
 import { useOpenSpace } from "@/hooks/use-open-space"
 import { useRoundRunner, type StartOptions } from "@/hooks/use-round-runner"
 import { useSeatListener } from "@/hooks/use-seat-listener"
-import { uniqueNames } from "@/lib/matchmaking/engine"
+import { roomCount, roomSizeLabel, uniqueNames } from "@/lib/matchmaking/engine"
 import {
   formGalleryGroups,
   mergeGroups,
@@ -207,24 +207,31 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
 
   const hint = (() => {
     const n = session.candidates.length
-    switch (activity) {
-      case "cafe": {
-        const unhosted = cafe.tables.filter((t) => t.pinned.length === 0).length
-        return unhosted > 0
-          ? `${unhosted} table(s) have no table host. That's fine: everyone rotates.`
-          : `${cafe.rounds} rotations of ${cafe.minutes} min across ${cafe.tables.length} tables.`
+    // Each person is moved with one Zoom call; big meetings take a while every round.
+    const big = n > 100 ? " Big meeting: moving everyone can take a minute or two each round." : ""
+    const base = (() => {
+      switch (activity) {
+        case "cafe": {
+          const unhosted = cafe.tables.filter((t) => t.pinned.length === 0).length
+          return unhosted > 0
+            ? `${unhosted} table(s) have no table host. That's fine: everyone rotates.`
+            : `${cafe.rounds} rotations of ${cafe.minutes} min across ${cafe.tables.length} tables.`
+        }
+        case "speed":
+          return n >= 2
+            ? `${speed.rounds} rounds of ${speed.minutes} min · ${n} people → ${roomCount(n, speed.groupSize)} rooms of ${roomSizeLabel(n, speed.groupSize)}.`
+            : `${speed.rounds} rounds of ${speed.minutes} min.`
+        case "oneTwoFour":
+          return `${oneTwoFour.steps.reduce((t, s) => t + s.minutes, 0)} min in total for ${n} people.`
+        case "tps":
+          return `${tps.think.minutes + tps.pair.minutes + tps.share.minutes} min in total for ${n} people.`
+        case "gallery":
+          return `${gallery.stations.length} stations × ${gallery.minutes} min.`
+        default:
+          return undefined
       }
-      case "speed":
-        return `${speed.rounds} rounds of ${speed.minutes} min, groups of ${speed.groupSize}.`
-      case "oneTwoFour":
-        return `${oneTwoFour.steps.reduce((t, s) => t + s.minutes, 0)} min in total for ${n} people.`
-      case "tps":
-        return `${tps.think.minutes + tps.pair.minutes + tps.share.minutes} min in total for ${n} people.`
-      case "gallery":
-        return `${gallery.stations.length} stations × ${gallery.minutes} min.`
-      default:
-        return undefined
-    }
+    })()
+    return base && base + big
   })()
 
   const timedSetup = (kind: TimedActivity) => {
@@ -232,7 +239,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
       case "cafe":
         return <CafeSettingsCard value={cafe} onChange={update("cafe")} people={session.people} disabled={runner.active} />
       case "speed":
-        return <SpeedSettingsCard value={speed} onChange={update("speed")} disabled={runner.active} />
+        return <SpeedSettingsCard value={speed} onChange={update("speed")} disabled={runner.active} people={session.candidates.length} />
       case "oneTwoFour":
         return <OneTwoFourCard value={oneTwoFour} onChange={update("oneTwoFour")} disabled={runner.active} />
       case "tps":

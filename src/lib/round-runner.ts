@@ -3,7 +3,7 @@ import type { ConfigureBreakoutRoomsOptions } from "@zoom/appssdk"
 import { emptyHistory, recordRound, type History } from "@/lib/matchmaking/rounds"
 import type { MatchPlan } from "@/lib/matchmaking/types"
 import { encode, type Message, type RoundInfo } from "@/lib/messages"
-import { orchestrate, type AssignmentFailure } from "@/lib/orchestrate"
+import { orchestrate, type AssignmentFailure, type OrchestrationProgress } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 /** `rooms` steps open breakout rooms; `main` steps run in the main room (e.g. silent reflection). */
@@ -33,6 +33,8 @@ export interface RunnerState {
   seatErrors: string[]
   /** Hosts / co-hosts joining their pinned room from their own app this step. */
   seats: Seat[]
+  /** While rooms are being set up: how many people have been moved so far. */
+  moving?: OrchestrationProgress
   error?: string
 }
 
@@ -233,7 +235,9 @@ export class RoundRunner {
       if (plan.rooms.length === 0) throw new Error(plan.warnings[0] ?? "There is nobody to match.")
       this.postTask(round)
 
-      const result = await orchestrate(this.opts.client, plan, this.opts.settings)
+      const result = await orchestrate(this.opts.client, plan, this.opts.settings, (moving) => {
+        if (generation === this.generation) this.set({ moving })
+      })
       if (generation !== this.generation) {
         // Ended while rooms were being set up: don't leave them open.
         await this.opts.client.closeBreakoutRooms().catch(() => {})
@@ -245,6 +249,7 @@ export class RoundRunner {
       const endsAt = Date.now() + this.minutesFor(round) * 60_000
       this.set({
         phase: "open",
+        moving: undefined,
         endsAt,
         roomIds: result.roomIds,
         seats,

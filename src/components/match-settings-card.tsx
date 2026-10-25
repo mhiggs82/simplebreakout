@@ -2,6 +2,7 @@ import { MessageSquare, Plus, Send, Shuffle, Tags, Trash2, UserPlus, Users } fro
 import { useId, useState } from "react"
 
 import { LinesField } from "@/components/round-fields"
+import { RoomSizeField } from "@/components/room-size-field"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -216,7 +217,6 @@ function AttributesEditor({ config, update }: { config: MatchConfig; update: (pa
 
 export function MatchSettingsCard({ session, disabled }: { session: HostSession; disabled: boolean }) {
   const { config, setConfig } = session
-  const sizeId = useId()
   const [sendError, setSendError] = useState<string | null>(null)
   const [invited, setInvited] = useState(false)
   const [asked, setAsked] = useState(false)
@@ -264,20 +264,11 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
           />
 
           {!groupSizeUnused && (
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor={sizeId}>People per room</Label>
-              <Input
-                id={sizeId}
-                type="number"
-                min={2}
-                max={20}
-                className="w-20"
-                value={config.groupSize}
-                onChange={(e) =>
-                  update({ groupSize: Math.min(20, Math.max(2, Number(e.target.value) || 2)) })
-                }
-              />
-            </div>
+            <RoomSizeField
+              value={config.groupSize}
+              onChange={(groupSize) => update({ groupSize })}
+              people={session.candidates.length}
+            />
           )}
         </fieldset>
       </CardContent>

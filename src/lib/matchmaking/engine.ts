@@ -25,6 +25,32 @@ export function roomCount(people: number, groupSize: number): number {
   return Math.min(MAX_ROOMS, Math.max(1, Math.floor(people / groupSize)))
 }
 
+/**
+ * Zoom apps can create at most 50 rooms, so big meetings get bigger rooms.
+ * Returns a plain-English warning when that happens, otherwise null.
+ */
+export function roomLimitWarning(people: number, groupSize: number): string | null {
+  const needed = Math.floor(people / Math.max(MIN_GROUP_SIZE, groupSize))
+  if (needed <= MAX_ROOMS) return null
+  return `${people} people in groups of ${groupSize} would need ${needed} rooms. Zoom apps can make ${MAX_ROOMS}, so rooms will have about ${Math.round(people / MAX_ROOMS)} people each.`
+}
+
+/** The room sizes people will actually get, e.g. "4" or "4–5". */
+export function roomSizeLabel(people: number, groupSize: number): string {
+  const count = roomCount(people, Math.max(MIN_GROUP_SIZE, groupSize))
+  const small = Math.floor(people / count)
+  return people % count === 0 ? `${small}` : `${small}–${small + 1}`
+}
+
+/** The people-per-room setting that gives closest to `rooms` rooms (it can be one off). */
+export function sizeForRooms(people: number, rooms: number): number {
+  const target = Math.max(1, Math.min(MAX_ROOMS, Math.round(rooms)))
+  const exact = people / target
+  const options = [...new Set([Math.floor(exact), Math.ceil(exact)].map((s) => Math.max(MIN_GROUP_SIZE, s)))]
+  const miss = (size: number) => Math.abs(roomCount(people, size) - target)
+  return options.reduce((best, size) => (miss(size) < miss(best) ? size : best))
+}
+
 /** Split an ordered list into `count` consecutive runs whose sizes differ by at most one. */
 function chunk<T>(items: readonly T[], count: number): T[][] {
   const size = Math.floor(items.length / count)
@@ -150,6 +176,7 @@ function matchAttributes(
     return matchRandom(people, config, rng)
   }
 
+  const atRoomLimit = Math.floor(people.length / config.groupSize) >= MAX_ROOMS
   const keyOf = (person: Candidate) => matchOn.map((id) => person.tags[id] ?? "")
   const byKey = (a: Candidate, b: Candidate) =>
     keyOf(a).join("\u0000").localeCompare(keyOf(b).join("\u0000"))
@@ -187,9 +214,20 @@ function matchAttributes(
     for (const bucket of buckets.values()) {
       if (bucket.length >= config.groupSize) {
         const sorted = [...bucket].sort(byKey)
-        for (const members of chunk(sorted, Math.floor(bucket.length / config.groupSize))) {
+        // Normally a room never drops below the group size. In big meetings the
+        // size is already raised to fit Zoom's room limit, so on the last pass
+        // round to the nearest number of rooms to keep sizes even.
+        const rooms =
+          depth === 0 && atRoomLimit
+            ? Math.max(1, Math.round(bucket.length / config.groupSize))
+            : Math.floor(bucket.length / config.groupSize)
+        // Full rooms of exactly the group size; the few extra people try
+        // again with one question fewer, rather than overfilling a room.
+        const take = depth > 0 ? rooms * config.groupSize : sorted.length
+        for (const members of chunk(sorted.slice(0, take), rooms)) {
           groups.push({ members, key: keyOf(members[0]) })
         }
+        leftovers.push(...sorted.slice(take))
       } else {
         leftovers.push(...bucket)
       }
@@ -228,12 +266,18 @@ function matchAttributes(
       const gap = Math.abs(options[i].indexOf(a) - options[i].indexOf(b))
       return options[i].includes(a) && options[i].includes(b) && gap === 1 ? 0.5 : 0
     }
+    // Keep rooms even: a room stops taking leftovers once it is one over the
+    // usual size, so the best-matching room doesn't keep growing.
+    const total = groups.reduce((n, g) => n + g.members.length, 0) + stragglers.length
+    const limit = Math.max(config.groupSize, Math.ceil(total / groups.length)) + 1
     for (const person of stragglers) {
       const key = keyOf(person)
       const score = (g: Group) =>
         g.key.reduce((total, v, i) => total + closeness(v, key[i], i) * (matchOn.length - i), 0)
-      let best = groups[0]
-      for (const g of groups) {
+      const open = groups.filter((g) => g.members.length < limit)
+      const choices = open.length > 0 ? open : groups
+      let best = choices[0]
+      for (const g of choices) {
         const better = score(g) > score(best)
         const tie = score(g) === score(best)
         if (better || (tie && g.members.length < best.members.length)) best = g
@@ -287,7 +331,17 @@ export function buildMatchPlan(
   if (people.length < MIN_GROUP_SIZE) {
     return { rooms: [], warnings: ["At least 2 participants are needed to make rooms."] }
   }
-  const safeConfig = { ...config, groupSize: Math.max(MIN_GROUP_SIZE, Math.floor(config.groupSize)) }
+  const groupSize = Math.max(MIN_GROUP_SIZE, Math.floor(config.groupSize))
+  const limit = roomLimitWarning(people.length, groupSize)
+  // Too many people for the rooms Zoom allows: plan bigger rooms up front,
+  // so rooms come out even instead of being merged afterwards.
+  const safeConfig = { ...config, groupSize: limit ? Math.ceil(people.length / MAX_ROOMS) : groupSize }
+  // One room per anchor (e.g. per mentor) has its own room-count warnings.
+  const anchored =
+    config.mode === "roles" &&
+    config.roles.some((r) => r.id === config.anchorRoleId) &&
+    people.some((p) => p.roleId === config.anchorRoleId)
+  if (limit && !anchored) warnings.push(limit)
 
   const rooms =
     config.mode === "roles"

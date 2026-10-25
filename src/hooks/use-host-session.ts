@@ -203,6 +203,10 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
     [included],
   )
 
+  const setIncludedMany = useCallback((uuids: string[], value: boolean) => {
+    setIncluded((prev) => ({ ...prev, ...Object.fromEntries(uuids.map((uuid) => [uuid, value])) }))
+  }, [])
+
   const setIncludedFor = useCallback((uuid: string, value: boolean) => {
     setIncluded((prev) => ({ ...prev, [uuid]: value }))
   }, [])
@@ -243,6 +247,7 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
     setAnswer,
     isIncluded,
     setIncluded: setIncludedFor,
+    setIncludedMany,
     candidates,
     collecting: sessionId !== null,
     questionsBytes,

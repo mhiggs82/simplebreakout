@@ -83,7 +83,7 @@ function mockOptions(): MockOptions {
   return {
     scenario: MOCK_SCENARIOS.find((s) => s === scenario) ?? "questions",
     closeDelayMs: (params.has("fast") ? 500 : 3000) * (params.has("chaos") ? 3 : 1),
-    people: Math.min(200, Math.max(1, Number(params.get("people")) || 20)),
+    people: Math.min(1000, Math.max(1, Number(params.get("people")) || 20)),
     cohosts: Math.max(0, Number(params.get("cohosts")) || 0),
     churn: params.has("churn"),
     chaos: params.has("chaos"),

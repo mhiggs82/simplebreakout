@@ -29,6 +29,19 @@ Each task and time limit is also **posted in the Zoom chat**, so everyone knows 
 5. While rooms are open you can **Pause**, add **+2 min**, go to the **Next round**, **End**, or **Visit a room**.
 6. When the rooms close, everyone comes back to the main meeting.
 
+## Choosing who goes to a room
+In **Participants**, ticked people go to a room. Unticked people stay in the main meeting (good for speakers, interpreters or helpers).
+- **Tick everyone / Untick everyone** does the whole list at once.
+- Type in **Search by name** to find people. The buttons then only change the people you see. For example, search "interpreter", then **Untick these**.
+
+## Room size
+Press **2**, **3**, **4** or **6** for people per room. Or switch to **Number of rooms** and type how many rooms you want. The line below always tells you what you'll get, e.g. "48 people → 12 rooms of 4".
+
+## Big meetings (100+ people)
+- Zoom lets apps make **up to 50 rooms**. With 1,000 people that means rooms of about 20. The app tells you before you start.
+- Moving everyone takes a little while. You'll see "Moving people: 340 of 1,000 · about 1 min left".
+- People who join late, or who couldn't be moved, show up as **"12 people aren't in a room yet"**. Press **Put them in rooms** and they join the smallest rooms.
+
 ## Grouping people by who they are
 Some options (Parents like me, Mentors with mentees) need to know something about each person. There are three ways to find out. Use whichever is easiest:
 

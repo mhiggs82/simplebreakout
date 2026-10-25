@@ -134,8 +134,19 @@ Name the stations (rooms). Groups are formed once, stay together, and move one s
 ### Open Space / pick-a-table *(More)*
 Name the tables. Each one can have a seat limit (0 means none) and a table host. Click **Open the space**, and attendees see the tables with live head-counts and **Join** buttons, so they can move whenever they like. Seat limits are **soft**: full tables are disabled in the app, but Zoom's own breakout menu still works, so nobody gets stuck. Optionally the space closes itself after a set number of minutes.
 
+### Big meetings (tested at 100, 500 and 1,000 people)
+* **Zoom apps can create at most 50 rooms** (`createBreakoutRooms` takes 1–50). When the chosen size needs more, rooms get bigger and the host sees it in plain words before starting, e.g. "1000 people in groups of 2 would need 500 rooms. Zoom apps can make 50, so rooms will have about 20 people each."
+* People are moved **8 at a time** (`ASSIGN_CONCURRENCY` in `src/lib/orchestrate.ts`) with a progress line and time estimate. In the mock (40 ms per call), 959 people took about 7 seconds.
+* "Same answers" rooms stay even at any size: no room over 1.5× the average.
+* Pairs planning has a 250 ms budget per attempt, so a 1,000-person round plans in under a second.
+* While rooms are open, **"N people aren't in a room yet · Put them in rooms"** moves late arrivals, and anyone who couldn't be moved, into the smallest rooms.
+* Participants has **search**, **Tick / Untick everyone** (or just the people shown), a filter (no answer yet, staying in the main meeting), and shows 150 rows at a time.
+* Room size: quick buttons (2, 3, 4, 6), or **Number of rooms** ("I want 10 rooms"), with a live "959 people → 50 rooms of 19–20" summary.
+* `src/lib/scale.test.ts` checks every mode at 100, 500 and 1,000 people.
+
 ### Things to confirm in a real meeting
 * Whether `sendMessage` reaches people already in breakout rooms. Insights, station notes and warnings depend on it. If it doesn't, prompts still arrive as each round starts, before people move, and Zoom's own closing countdown still warns everyone.
+* How long one `assignParticipantToBreakoutRoom` call takes in a real 500+ person meeting, and whether 8 at a time hits a Zoom rate limit.
 * Whether `changeBreakoutRoom` lets attendees join an Open Space table directly from the app panel while Zoom's self-select is on.
 * Visiting rooms from the host panel uses `changeBreakoutRoom`, which Zoom documents for hosts.
 
@@ -179,7 +190,7 @@ The SDK only works inside the Zoom client. To work on the UI in a normal browser
 * `?mock=attendee&scenario=fishbowl`: attendee watching a Fishbowl, with the raise-hand button.
 * `?mock=attendee&scenario=openspace` or `gallery`: the attendee side of those More formats.
 * Add `&fast=1` to make simulated rooms close quickly.
-* Stress-test flags for `?mock=host`: `people=N` (meeting size, 1–200), `cohosts=K`, `churn=1` (people keep joining and leaving), `chaos=1` (about 10% of SDK calls fail, and rooms close slowly). For example: `?mock=host&fast=1&people=60&cohosts=2&churn=1&chaos=1`.
+* Stress-test flags for `?mock=host`: `people=N` (meeting size, 1–1000), `cohosts=K`, `churn=1` (people keep joining and leaving), `chaos=1` (about 10% of SDK calls fail, and rooms close slowly). For example: `?mock=host&fast=1&people=60&cohosts=2&churn=1&chaos=1`.
 
 ### Configure the Zoom App (Marketplace)
 1. **Home URL / OAuth Redirect URL:** `https://localhost:5173`
