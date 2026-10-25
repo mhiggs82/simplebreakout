@@ -32,11 +32,11 @@ const MAIN: Item[] = [
 
 /** Everything beyond the three everyday formats (groups, pairs, rotations) lives under "More" to keep the dashboard calm. */
 export const MORE: Item[] = [
-  { value: "oneTwoFour", label: "1-2-4-All", icon: Layers, description: "Ideas alone, then pairs, fours, the whole class" },
-  { value: "openSpace", label: "Open Space", icon: LayoutGrid, description: "Students pick a topic room · works best with the app" },
-  { value: "tps", label: "Think-Pair-Share", icon: Lightbulb, description: "Think alone, discuss in pairs, share with the class" },
-  { value: "gallery", label: "Gallery walk", icon: Frame, description: "Jigsaw: groups rotate through texts or stations · notes need the app" },
-  { value: "fishbowl", label: "Fishbowl", icon: Fish, description: "A few speak on stage while the class observes" },
+  { value: "oneTwoFour", label: "1-2-4-All", icon: Layers, description: "Think alone, then pairs, then fours, then everyone" },
+  { value: "openSpace", label: "Pick a room", icon: LayoutGrid, description: "People choose the topic room they want" },
+  { value: "tps", label: "Think, pair, share", icon: Lightbulb, description: "Think alone, talk in pairs, share with everyone" },
+  { value: "gallery", label: "Gallery walk", icon: Frame, description: "Groups visit each idea in turn and leave notes (needs the app)" },
+  { value: "fishbowl", label: "Fishbowl", icon: Fish, description: "A few people talk on screen while everyone else listens" },
 ]
 
 export function ActivityNav({

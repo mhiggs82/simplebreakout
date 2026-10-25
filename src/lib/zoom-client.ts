@@ -34,10 +34,16 @@ const MOCK_NAMES = [
 const FIRST = ["Amara", "Ben", "Chen", "Diego", "Elif", "Fatima", "Grace", "Hugo", "Isabel", "Jonas", "Keiko", "Liam", "Maya", "Noah", "Olivia", "Pedro", "Quinn", "Rania", "Sofia", "Tariq", "Uma", "Victor", "Wen", "Xavier", "Yara", "Zane"]
 const LAST = ["Okafor", "Carter", "Wei", "Alvarez", "Yilmaz", "Al-Sayed", "Kim", "Martin", "Rossi", "Berg", "Tanaka", "O'Brien", "Patel", "Cohen", "Brown", "Santos", "Murphy", "Haddad", "Novak", "Aziz"]
 
-/** The original 20 names first, then generated ones for bigger meetings. */
+/** Some people describe themselves in their Zoom name instead of using the app. */
+const MOCK_NAME_TAGS = [" - Netherlands, Amsterdam, 14–15", " (Saudi Arabia, Riyadh, 16–17)", " | Mentor", " - Netherlands, 12–13"]
+
+/** The original 20 names first, then generated ones for bigger meetings. Every fourth name carries tags. */
 function mockName(i: number): string {
-  if (i < MOCK_NAMES.length) return MOCK_NAMES[i]
-  return `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${Math.floor(i / 100) || ""}`.trim()
+  const base =
+    i < MOCK_NAMES.length
+      ? MOCK_NAMES[i]
+      : `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${Math.floor(i / 100) || ""}`.trim()
+  return i % 4 === 3 ? base + MOCK_NAME_TAGS[Math.floor(i / 4) % MOCK_NAME_TAGS.length] : base
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

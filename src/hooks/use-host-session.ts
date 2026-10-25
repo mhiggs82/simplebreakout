@@ -1,7 +1,7 @@
 import type { OnMessageEvent } from "@zoom/appssdk"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { Answers, Candidate, MatchConfig } from "@/lib/matchmaking/types"
+import type { Answers, Candidate, CategoryDef, MatchConfig } from "@/lib/matchmaking/types"
 import {
   byteSize,
   decode,
@@ -10,24 +10,29 @@ import {
   questionnaireFor,
   sanitizeAnswers,
 } from "@/lib/messages"
+import { answersFromName, hasAnswers, nameTagInstructions } from "@/lib/name-tags"
 import type { ZoomClient } from "@/lib/zoom-client"
+
+/** Parents: same country and city, with teens of a similar age. */
+export const PARENT_QUESTIONS: CategoryDef[] = [
+  { id: "country", label: "Country", options: ["Netherlands", "Saudi Arabia", "United Kingdom", "United States", "Other"] },
+  { id: "city", label: "City", options: ["Amsterdam", "Riyadh", "Jeddah", "London", "Other"] },
+  { id: "teenAge", label: "Teen's age", options: ["12–13", "14–15", "16–17", "18+"] },
+]
 
 export const DEFAULT_CONFIG: MatchConfig = {
   mode: "random",
-  groupSize: 3,
-  // Classroom defaults: A/B role-plays, and level / first language for mixing groups.
+  groupSize: 4,
   roles: [
-    { id: "studentA", label: "Student A" },
-    { id: "studentB", label: "Student B" },
+    { id: "mentor", label: "Mentor" },
+    { id: "mentee", label: "Mentee" },
   ],
   anchorRoleId: null,
-  categories: [
-    { id: "level", label: "Level", options: ["A2", "B1", "B2", "C1"] },
-    { id: "firstLanguage", label: "First language", options: ["Arabic", "Spanish", "Chinese", "Other"] },
-    { id: "confidence", label: "Speaking confidence", options: ["Low", "Medium", "High"] },
-  ],
-  matchOn: ["firstLanguage", "level"],
-  attributeStrategy: "diverse",
+  // Questions are tried top first; when there aren't enough exact matches,
+  // the bottom one is relaxed and people go to the closest room.
+  categories: [...PARENT_QUESTIONS],
+  matchOn: PARENT_QUESTIONS.map((c) => c.id),
+  attributeStrategy: "similar",
   roomLabels: [],
 }
 
@@ -67,7 +72,8 @@ export function withUniqueNames<T extends { name: string }>(people: T[]): T[] {
   })
 }
 
-type StoredAnswers = Answers & { source: "self" | "host" }
+/** "name": read from a tag in their Zoom name, e.g. "Sam - Mentor". */
+type StoredAnswers = Answers & { source: "self" | "host" | "name" }
 
 const PRIVILEGED_ROLES = new Set(["host", "coHost"])
 
@@ -75,7 +81,7 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
   const [config, setConfig] = useState<MatchConfig>(loadConfig)
   const [people, setPeople] = useState<MeetingPerson[]>([])
   const [participantsError, setParticipantsError] = useState<string | null>(null)
-  const [answers, setAnswers] = useState<Record<string, StoredAnswers>>({})
+  const [stored, setAnswers] = useState<Record<string, StoredAnswers>>({})
   // Hosts and co-hosts can't be assigned by the SDK, so they start excluded.
   const [included, setIncluded] = useState<Record<string, boolean>>({})
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -201,6 +207,22 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
     setIncluded((prev) => ({ ...prev, [uuid]: value }))
   }, [])
 
+  // Answers from the app or set by the host win; otherwise use tags in the Zoom name.
+  const answers = useMemo(() => {
+    const merged: Record<string, StoredAnswers> = { ...stored }
+    for (const person of people) {
+      if (merged[person.uuid]) continue
+      const fromName = answersFromName(person.name, config)
+      if (hasAnswers(fromName)) merged[person.uuid] = { ...fromName, source: "name" }
+    }
+    return merged
+  }, [stored, people, config])
+
+  const askForNameTags = useCallback(async () => {
+    const message = nameTagInstructions(config)
+    if (message) await client.sendMessageToChat({ message })
+  }, [client, config])
+
   const candidates: Candidate[] = useMemo(
     () =>
       people.filter(isIncluded).map((person) => ({
@@ -227,6 +249,7 @@ export function useHostSession(client: ZoomClient, selfUuid: string) {
     questionsOutdated,
     sendQuestions,
     inviteEveryone,
+    askForNameTags,
     announceStart,
   }
 }

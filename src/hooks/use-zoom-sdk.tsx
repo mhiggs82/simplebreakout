@@ -125,7 +125,7 @@ async function initialize(): Promise<ZoomSdkState> {
   if (config.runningContext !== "inMeeting") {
     return {
       status: "error",
-      error: `Global Breakout runs inside a meeting (current context: ${config.runningContext}).`,
+      error: "Easy Breakouts works inside a Zoom meeting. Start or join a meeting, then open it from Apps.",
     }
   }
 

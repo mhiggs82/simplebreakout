@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LESSON_PRESETS, type LessonPreset } from "@/lib/lesson-presets"
 
-/** One-click lesson stages for teachers: picks the format and fills in timings and tasks. */
+/** One-click session steps: picks the format and fills in timings and prompts. */
 export function LessonPresetsCard({ onApply }: { onApply: (preset: LessonPreset) => void }) {
   const [applied, setApplied] = useState<LessonPreset | null>(null)
   return (
@@ -14,7 +14,7 @@ export function LessonPresetsCard({ onApply }: { onApply: (preset: LessonPreset)
         <CardTitle className="flex items-center gap-2">
           <Wand2 className="size-5" aria-hidden="true" /> Quick start
         </CardTitle>
-        <CardDescription>Pick a lesson stage. You can change the task and timings before you start.</CardDescription>
+        <CardDescription>New here? Pick one. You can change the details below before you start.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -38,7 +38,7 @@ export function LessonPresetsCard({ onApply }: { onApply: (preset: LessonPreset)
         {applied && (
           <p role="status" className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
-            {applied.label} is ready. Check the task below, then press Start.
+            {applied.label} is set up. Check the details below, then press the big button.
           </p>
         )}
       </CardContent>

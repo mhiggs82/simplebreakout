@@ -1,4 +1,4 @@
-# Global Breakout
+# Easy Breakouts
 
 A one-click breakout room organizer for Zoom meetings, built as a **Zoom App** with the Zoom Apps SDK and **shadcn/ui**. Inspired by [Twine for Zoom](https://marketplace.zoom.us/apps/-cYA3VcaQduxP8suHFGXiA).
 
@@ -82,9 +82,13 @@ The host's roles and questions are saved in the browser, so they're ready next m
 
 ## Audience Interactions
 
-New to the app? See **[TEACHER-GUIDE.md](TEACHER-GUIDE.md)**, a one-page guide for teachers and CELTA/DELTA trainers.
+New to the app? See **[HOST-GUIDE.md](HOST-GUIDE.md)**, a one-page guide in plain English for any host.
 
-The host panel opens with **Quick start** lesson presets (Pair check, Role-play pairs, Fluency practice, Mixed-level groups, Think-Pair-Share). Below them, the everyday formats sit up front: **Groups | Pairs | Rotate** (Match, Speed Networking and World Café in the code). Everything else is tucked under **More**: 1-2-4-All, Open Space, Think-Pair-Share, Gallery walk and Fishbowl. Your tables, prompts and timings are remembered on this device.
+The host panel opens with **Quick start** presets (Parents like me, Quick chat in pairs, Meet new people, Mentors with mentees, Think, pair, share). Below them, the everyday formats sit up front: **Groups | Pairs | Rotate** (Match, Speed Networking and World Café in the code). Everything else is tucked under **More**: 1-2-4-All, Pick a room (Open Space), Think, pair, share, Gallery walk and Fishbowl.
+
+**Describing yourself without the app.** In Roles or Attributes mode, people can add their answers to their Zoom name after a dash or brackets, e.g. `Aisha - Netherlands, Amsterdam, 14–15` or `Sam (Mentor)`. The host reads them live from the participant list (`src/lib/name-tags.ts`). Answers from the app or set by the host take priority. **Ask everyone in chat to add it to their name** posts the instructions with `sendMessageToChat`.
+
+**Closest match.** In "same answers" mode, a leftover person joins the room that matches best: earlier questions count more, and the neighbouring option in a list (e.g. teen's age 14–15 vs 16–17) counts half. Your tables, prompts and timings are remembered on this device.
 
 **You stay in the main room.** For any format that uses breakout rooms, open **Visit a room** in the controls to drop into any room, and **Back to main room** to return.
 
@@ -93,7 +97,7 @@ Themed tables with a **Table Host who stays put**, while everyone else ("travell
 * Name each table (e.g. *Sustainability*, *Scaling*) and pin a Table Host to it. The Table Host can be an attendee or a co-host. You stay in the main room and can visit any table.
 * Set the number of rotations, minutes per round, and one prompt per round.
 * Travellers are spread evenly. Each round prefers tables they haven't visited yet and people they haven't met.
-* **Hosts and co-hosts can't be moved by the Zoom SDK.** So when one of them is pinned, their own Global Breakout panel joins the table for them (`changeBreakoutRoom`). They need the app open.
+* **Hosts and co-hosts can't be moved by the Zoom SDK.** So when one of them is pinned, their own Easy Breakouts panel joins the table for them (`changeBreakoutRoom`). They need the app open.
 
 ### Speed Networking
 Short timed rounds of pairs or small groups.
@@ -221,7 +225,7 @@ src/
 │   ├── breakout-dashboard.tsx       # Host vs attendee layout
 │   ├── host-panel.tsx               # Host: activity navigation + wiring for every format
 │   ├── activity-nav.tsx             # Groups | Pairs | Rotate | More ▾
-│   ├── lesson-presets-card.tsx      # Quick start: one-click lesson stages
+│   ├── lesson-presets-card.tsx      # Quick start: one-click presets
 │   ├── orchestrate-card.tsx         # One-click matching: preview, orchestrate, close
 │   ├── room-settings-card.tsx       # Zoom breakout room options
 │   ├── room-visitor.tsx             # Host visits a room / returns to main room
@@ -241,7 +245,8 @@ src/
     ├── matchmaking/engine.ts        # Pure matching logic for all three modes (+ tests)
     ├── matchmaking/rounds.ts        # Speed rounds, café rotations, 1-2-4 merging, gallery rotation (+ tests)
     ├── round-runner.ts              # Timed steps (rooms or main room) state machine (+ tests)
-    ├── lesson-presets.ts            # Pair check, role-play, fluency, mixed levels, TPS (+ tests)
+    ├── lesson-presets.ts            # Parents like me, pairs, mentors, think-pair-share (+ tests)
+    ├── name-tags.ts                 # Answers read from Zoom names, e.g. "Sam - Mentor" (+ tests)
     ├── orchestrate.ts               # create → configure → assign → open (+ tests)
     ├── messages.ts                  # sendMessage protocol, validation, 1 KB check (+ tests)
     ├── zoom-client.ts               # SDK surface used + in-browser mock

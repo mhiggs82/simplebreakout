@@ -247,7 +247,7 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
   const controls = (kind: TimedActivity) => (
     <RoundControlCard
       title="Run it"
-      description="Steps advance automatically. You stay in the main room and can visit any room."
+      description="Everything moves on by itself. You stay in the main room and can visit any room."
       runner={runner}
       minutes={stepMinutes(running ?? kind, activities, state?.round ?? 0)}
       canStart={session.candidates.length >= 2 && (kind !== "gallery" || gallery.stations.length >= 2)}
@@ -302,11 +302,11 @@ export function HostPanel({ client, selfUuid }: { client: ZoomClient; selfUuid: 
               items={harvest.items}
               onRemove={harvest.remove}
               onShare={harvest.share}
-              title={activity === "gallery" ? "Station notes" : "Harvest"}
+              title={activity === "gallery" ? "Notes on each idea" : "Best ideas from groups"}
               description={
                 activity === "gallery"
-                  ? "Notes each group leaves at a station. The next group at that station sees them."
-                  : "Key insights groups send from their app panel. Shared automatically when everyone is back together."
+                  ? "Notes each group leaves on an idea. The next group to visit that idea sees them."
+                  : "Ideas groups send from the app. Everyone sees them when the whole group is back together."
               }
             />
           )}

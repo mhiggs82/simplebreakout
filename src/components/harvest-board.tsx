@@ -11,8 +11,8 @@ export function HarvestBoard({
   items,
   onRemove,
   onShare,
-  title = "Harvest",
-  description = "Key insights groups send from their app panel appear here.",
+  title = "Best ideas from groups",
+  description = "Ideas groups send from the app appear here.",
 }: {
   items: HarvestEntry[]
   onRemove: (id: number) => void

@@ -46,8 +46,8 @@ export function CafeSettingsCard({
       <CardHeader>
         <CardTitle>Rotating tables</CardTitle>
         <CardDescription>
-          Also called World Café. Give each table a topic and, if you like, pin a table host who stays put
-          (e.g. a stronger student or a co-teacher). Everyone else moves to a new table each round.
+          Give each table a topic. If you like, choose a table host who stays at that table. Everyone else moves to
+          a new table each round and meets new people.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -78,11 +78,11 @@ export function CafeSettingsCard({
                   value={table.pinned[0] ?? NO_HOST}
                   onValueChange={(v) => pinHost(table.id, v === NO_HOST ? null : v)}
                 >
-                  <SelectTrigger size="sm" className="w-full" aria-label={`Table Host for ${table.name}`}>
+                  <SelectTrigger size="sm" className="w-full" aria-label={`Table host for ${table.name}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_HOST}>No Table Host</SelectItem>
+                    <SelectItem value={NO_HOST}>No table host</SelectItem>
                     {people.filter((person) => !person.isSelf).map((person) => {
                       const elsewhere = tableOf(person.uuid)
                       return (
@@ -118,7 +118,7 @@ export function CafeSettingsCard({
           />
           <p className="text-xs text-muted-foreground">
             You stay in the main room and can visit any table from the round controls. Co-hosts pinned to a
-            table join it from their own app panel, so they need Global Breakout open.
+            table join it from their own app panel, so they need Easy Breakouts open.
           </p>
         </fieldset>
       </CardContent>

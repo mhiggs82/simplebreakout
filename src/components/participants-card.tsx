@@ -77,6 +77,7 @@ function PersonRow({ person, session, showAnswers }: { person: MeetingPerson; se
             <span className="block truncate text-xs text-muted-foreground">
               {answerText || (included ? "Waiting for answer" : "Not matched")}
               {answers?.source === "host" && " (set by you)"}
+              {answers?.source === "name" && " (from their Zoom name)"}
             </span>
           )}
         </label>
@@ -137,7 +138,7 @@ export function ParticipantsCard({ session, showAnswers = true }: { session: Hos
       <CardHeader>
         <CardTitle>Participants</CardTitle>
         <CardDescription aria-live="polite">
-          {includedCount} of {people.length} will be matched
+          {includedCount} of {people.length} will be put in rooms
           {showAnswers && config.mode !== "random" && ` · ${answeredCount} answered`}
         </CardDescription>
         <CardAction>
@@ -158,7 +159,7 @@ export function ParticipantsCard({ session, showAnswers = true }: { session: Hos
         )}
         {showAnswers && config.mode !== "random" && (
           <p className="pt-3 text-xs text-muted-foreground">
-            People without the app can't answer: set their answers with the arrow, or they'll be placed wherever there's room.
+            No app? People can add their answers to their Zoom name (e.g. "Sam - Mentor"), or you can set them with the arrow. Anyone without an answer goes wherever there's room.
           </p>
         )}
       </CardContent>

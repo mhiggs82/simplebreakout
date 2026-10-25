@@ -113,9 +113,9 @@ function QuestionForm({
 
 const ACTIVITY_NAMES: Record<RoundInfo["activity"], string> = {
   cafe: "Rotating tables",
-  speed: "Quick pairs",
+  speed: "Pairs",
   oneTwoFour: "1-2-4-All",
-  tps: "Think-Pair-Share",
+  tps: "Think, pair, share",
   gallery: "Gallery walk",
 }
 
@@ -206,7 +206,7 @@ function RoundCard({
           <InsightBox
             sent={insightsSent}
             onSend={onInsight}
-            label={round.activity === "gallery" ? "Leave a note for the next group" : "Your group's key insight"}
+            label={round.activity === "gallery" ? "Leave a note for the next group" : "Your group's best idea"}
           />
         )}
         {warning !== null && (
@@ -407,8 +407,8 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Hourglass className="size-5" /> Waiting for the host</CardTitle>
           <CardDescription>
-            Keep this panel open to see tasks and timers here. If you close it, nothing breaks: your teacher
-            moves you to rooms and tasks also appear in the Zoom chat.
+            Keep this panel open to see tasks and timers here. If you close it, that's fine: the host still
+            moves you to rooms, and tasks also appear in the Zoom chat.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -423,7 +423,7 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
           {submitted ? (
             <><CheckCircle2 className="size-4 text-primary" /> Your answers were sent to the host.</>
           ) : (
-            "Your answers help your teacher put you in the right group."
+            "Your answers help the host put you in the right room."
           )}
         </CardDescription>
       </CardHeader>

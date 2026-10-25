@@ -91,7 +91,7 @@ export function OrchestrateCard({
       <CardHeader>
         <CardTitle>Rooms</CardTitle>
         <CardDescription>
-          {candidates.length} people ready. Preview first, or go straight to one-click matching.
+          {candidates.length} people ready. Preview the rooms first, or make them straight away.
         </CardDescription>
       </CardHeader>
       <CardFooter className="flex-col items-stretch gap-3">
@@ -102,7 +102,7 @@ export function OrchestrateCard({
           onClick={() => void handleOrchestrate()}
         >
           {running ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-          Orchestrate Matchmaking
+          Make rooms
         </Button>
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -113,7 +113,7 @@ export function OrchestrateCard({
               setPreview(buildMatchPlan(candidates, config))
             }}
           >
-            <Eye /> {preview ? "Reshuffle" : "Preview"}
+            <Eye /> {preview ? "Shuffle again" : "Preview rooms"}
           </Button>
           <Button variant="outline" disabled={running || closing} onClick={() => void handleClose()}>
             {closing ? <Loader2 className="animate-spin" /> : <DoorClosed />} Close rooms
@@ -162,7 +162,7 @@ export function OrchestrateCard({
         {current && (current.joined > 0 || current.left > 0) && run.status !== "done" && (
           <p className="text-sm text-muted-foreground" aria-live="polite">
             Since this preview: {current.joined} joined, {current.left} left. Newcomers were added to the smallest
-            rooms. Reshuffle for a fresh plan.
+            rooms. Press Shuffle again for a new plan.
           </p>
         )}
         {preview && preview.rooms.length > 0 && <RoomPlan plan={preview} config={config} />}

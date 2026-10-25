@@ -34,8 +34,8 @@ export function FishbowlCard({
       <CardHeader>
         <CardTitle>Fishbowl</CardTitle>
         <CardDescription>
-          A small inner circle talks on the main stage (spotlighted) while everyone else listens. Observers raise a
-          hand in their app to ask for a seat, and you swap them in.
+          A few people talk on screen (spotlighted) while everyone else listens. Listeners raise their hand to
+          join in, and you swap them in.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

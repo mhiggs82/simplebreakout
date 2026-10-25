@@ -57,13 +57,13 @@ export interface ActivitySettings {
   openSpace: OpenSpaceSettings
 }
 
-/** Ready-made speaking tasks for quick pairs. */
+/** Ready-made conversation starters. */
 export const ICEBREAKERS = [
-  "Compare your answers. Where you disagree, explain why.",
-  "Tell your partner about a time you… Ask two follow-up questions.",
-  "Agree on the three most important points from the presentation.",
-  "Use today's new language in three sentences about your own life.",
-  "What's still unclear? Agree on one question to ask the teacher.",
+  "Say hello. What brought you here today?",
+  "What's one thing that went well for you this week?",
+  "What stood out to you from what we just heard?",
+  "What's one question you'd like answered today?",
+  "What's one small thing you'll try after this session?",
 ]
 
 export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
@@ -78,9 +78,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     rounds: 3,
     minutes: 15,
     prompts: [
-      "Discuss the question on your table. Note your group's best ideas.",
-      "New table: read what the last group said. Agree or disagree?",
-      "Final table: summarise the main points to report back.",
+      "Talk about this table's topic. What do you each think?",
+      "New table: what are you hearing that's different from your last table?",
+      "Last table: pick one idea to share with everyone.",
     ],
   },
   speed: { groupSize: 2, rounds: 5, minutes: 3, prompts: ICEBREAKERS.slice(0, 3), roomLabels: [] },
@@ -99,9 +99,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     share: { minutes: 5, prompt: "Share: let's hear the insights from each pair." },
   },
   gallery: {
-    stations: ["Text A", "Text B", "Text C", "Text D"],
+    stations: ["Idea 1", "Idea 2", "Idea 3", "Idea 4"],
     minutes: 6,
-    prompts: ["What is the main idea?", "What did the last group miss?", "Correct or improve one note."],
+    prompts: ["What do you like about this idea?", "What did the last group miss?", "How could it be even better?"],
   },
   openSpace: {
     tables: [

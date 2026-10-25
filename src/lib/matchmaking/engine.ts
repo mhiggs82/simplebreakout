@@ -160,7 +160,7 @@ function matchAttributes(
     ;(keyOf(person).every((v) => v === "") ? wildcards : answered).push(person)
   }
   if (wildcards.length > 0) {
-    warnings.push(`${wildcards.length} participant(s) gave no answers and fill in the smallest rooms.`)
+    warnings.push(`${wildcards.length} person(s) gave no answers and were put wherever there was room.`)
   }
 
   if (config.attributeStrategy === "diverse") {
@@ -196,15 +196,42 @@ function matchAttributes(
     }
   }
 
-  // Fewer than `groupSize` people remain: join the most similar room, or
-  // form a room of their own if there is nothing to join.
-  const stragglers = [...leftovers, ...wildcards]
+  // Nobody could be grouped by answers (e.g. only a few people answered):
+  // split everyone into normal-sized rooms, near answers next to each other.
   if (groups.length === 0) {
-    if (stragglers.length > 0) groups.push({ members: stragglers, key: [] })
-  } else {
+    const everyone = [...[...leftovers].sort(byKey), ...wildcards]
+    for (const members of chunk(everyone, roomCount(everyone.length, config.groupSize))) {
+      groups.push({ members, key: keyOf(members[0]) })
+    }
+    leftovers = []
+    wildcards.length = 0
+  }
+
+  // Enough people without answers for rooms of their own: give them some,
+  // rather than piling them all into the existing rooms.
+  const spareRooms = Math.floor(wildcards.length / config.groupSize)
+  if (spareRooms > 0) {
+    for (const members of chunk(wildcards, spareRooms)) groups.push({ members, key: [] })
+    wildcards.length = 0
+  }
+
+  // The few people left join the most similar room (or the smallest).
+  const stragglers = [...leftovers, ...wildcards]
+  if (groups.length > 0) {
+    // Earlier questions matter more. An exact answer scores in full; the
+    // neighbouring option in that question's list (e.g. ages 14–15 vs 16–17)
+    // scores half, so leftovers join the closest room, not just any room.
+    const options = matchOn.map((id) => config.categories.find((c) => c.id === id)?.options ?? [])
+    const closeness = (a: string, b: string, i: number) => {
+      if (a === "" || b === "") return 0
+      if (a === b) return 1
+      const gap = Math.abs(options[i].indexOf(a) - options[i].indexOf(b))
+      return options[i].includes(a) && options[i].includes(b) && gap === 1 ? 0.5 : 0
+    }
     for (const person of stragglers) {
       const key = keyOf(person)
-      const score = (g: Group) => g.key.filter((v, i) => v !== "" && v === key[i]).length
+      const score = (g: Group) =>
+        g.key.reduce((total, v, i) => total + closeness(v, key[i], i) * (matchOn.length - i), 0)
       let best = groups[0]
       for (const g of groups) {
         const better = score(g) > score(best)

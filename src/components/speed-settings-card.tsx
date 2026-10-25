@@ -14,10 +14,9 @@ export function SpeedSettingsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Quick pairs</CardTitle>
+        <CardTitle>Pairs</CardTitle>
         <CardDescription>
-          Short timed rounds for fluency practice, peer-checking or interviews. Every round finds students a new
-          partner, for as long as that's possible.
+          Short, timed chats. Each round, everyone gets someone new to talk to, for as long as that's possible.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -21,18 +21,18 @@ export type RoomSettings = ToggleSettings & { closeAfter: number; countDown: num
 const SETTING_LABELS: { key: keyof ToggleSettings; label: string; hint: string }[] = [
   {
     key: "automaticallyMoveParticipantsIntoRooms",
-    label: "Auto-move participants",
-    hint: "Send people straight into their room without a join prompt.",
+    label: "Move people automatically",
+    hint: "People go straight to their room. They don't have to click Join.",
   },
   {
     key: "allowParticipantsReturnToMainSession",
-    label: "Allow return to main session",
-    hint: "Participants can leave their room and rejoin the main meeting.",
+    label: "Let people come back early",
+    hint: "People can leave their room and return to the main meeting.",
   },
   {
     key: "allowParticipantsChooseRoom",
-    label: "Let participants choose",
-    hint: "Participants may switch rooms themselves after assignment.",
+    label: "Let people switch rooms",
+    hint: "People can move to a different room themselves.",
   },
 ]
 
