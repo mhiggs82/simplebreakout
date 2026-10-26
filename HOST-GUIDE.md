@@ -2,6 +2,8 @@
 
 Easy Breakouts puts people into the right Zoom breakout rooms in one click. You don't need any training. If you can run a Zoom meeting, you can use it.
 
+Trying it for the first time? Follow **[FIRST-TEST.md](FIRST-TEST.md)**, a 15-minute test with two helpers.
+
 ## Does everyone need the app?
 **No. Only you (the host) need it.** The app moves people into Zoom breakout rooms. They just see Zoom's normal "Join breakout room" message.
 

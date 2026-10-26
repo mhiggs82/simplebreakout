@@ -94,6 +94,8 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
 
 ## 4. First live test checklist (about 20 minutes, 3 people)
 
+> For the current Easy Breakouts version (chat posts, name tags, late arrivals), use **[FIRST-TEST.md](FIRST-TEST.md)**. It replaces this list.
+
 **Who you need:** you (host), one co-host, and one attendee. The attendee should ideally be a user in your account who has added the app.
 
 1. **Open:** Apps → Easy Breakouts. Your role badge shows **Host**.
