@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { DoorClosed, Eye, Loader2, Sparkles } from "lucide-react"
+import { DoorClosed, Eye, Loader2, Sparkles, UserPlus } from "lucide-react"
 
 import { RoomPlan } from "@/components/room-plan"
 import type { RoomSettings } from "@/components/room-settings-card"
@@ -9,14 +9,21 @@ import { Progress } from "@/components/ui/progress"
 import type { HostSession } from "@/hooks/use-host-session"
 import { buildMatchPlan, reconcilePlan } from "@/lib/matchmaking/engine"
 import type { MatchPlan } from "@/lib/matchmaking/types"
-import { orchestrate, type OrchestrationProgress, type OrchestrationResult } from "@/lib/orchestrate"
+import {
+  movingText,
+  orchestrate,
+  placeLateArrivals,
+  withoutFailures,
+  type OrchestrationProgress,
+  type OrchestrationResult,
+} from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 const STEP_LABELS: Record<OrchestrationProgress["step"], string> = {
-  checking: "Checking current rooms…",
-  creating: "Creating rooms…",
-  configuring: "Applying room settings…",
-  assigning: "Assigning participants…",
+  checking: "Checking for open rooms…",
+  creating: "Making rooms…",
+  configuring: "Setting up rooms…",
+  assigning: "Moving people…",
   opening: "Opening rooms…",
   done: "Rooms are open",
 }
@@ -30,7 +37,8 @@ function errorText(err: unknown): string {
 type RunState =
   | { status: "idle" }
   | { status: "running"; progress: OrchestrationProgress }
-  | { status: "done"; result: OrchestrationResult }
+  /** `opened`: who is really in each room now (people who couldn't be moved are left out). */
+  | { status: "done"; result: OrchestrationResult; opened: MatchPlan; placing?: boolean }
   | { status: "error"; error: string }
 
 export function OrchestrateCard({
@@ -66,8 +74,28 @@ export function OrchestrateCard({
       const result = await orchestrate(client, plan, settings, (progress) =>
         setRun({ status: "running", progress }),
       )
-      setRun({ status: "done", result })
+      setRun({ status: "done", result, opened: withoutFailures(plan, result.failures) })
       await session.announceStart().catch(() => {})
+    } catch (err) {
+      setRun({ status: "error", error: errorText(err) })
+    }
+  }
+
+  // Rooms are open: anyone here who isn't in a room yet (late arrivals, or
+  // people who couldn't be moved the first time).
+  const inRooms = run.status === "done" ? new Set(run.opened.rooms.flatMap((r) => r.members.map((m) => m.uuid))) : null
+  const waiting = inRooms ? candidates.filter((c) => !inRooms.has(c.uuid)) : []
+
+  const handlePlaceWaiting = async () => {
+    if (run.status !== "done") return
+    setRun({ ...run, placing: true })
+    try {
+      const late = await placeLateArrivals(client, run.opened, run.result.roomIds, candidates)
+      setRun({
+        status: "done",
+        result: { ...run.result, assigned: run.result.assigned + late.placed, failures: late.failures },
+        opened: withoutFailures(late.plan, late.failures),
+      })
     } catch (err) {
       setRun({ status: "error", error: errorText(err) })
     }
@@ -91,7 +119,8 @@ export function OrchestrateCard({
       <CardHeader>
         <CardTitle>Rooms</CardTitle>
         <CardDescription>
-          {candidates.length} people ready. Preview first, or go straight to one-click matching.
+          {candidates.length.toLocaleString()} people ready. Preview the rooms first, or make them straight away.
+          {candidates.length > 100 && " With this many people, moving everyone can take a minute or two."}
         </CardDescription>
       </CardHeader>
       <CardFooter className="flex-col items-stretch gap-3">
@@ -102,7 +131,7 @@ export function OrchestrateCard({
           onClick={() => void handleOrchestrate()}
         >
           {running ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-          Orchestrate Matchmaking
+          Make rooms
         </Button>
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -113,7 +142,7 @@ export function OrchestrateCard({
               setPreview(buildMatchPlan(candidates, config))
             }}
           >
-            <Eye /> {preview ? "Reshuffle" : "Preview"}
+            <Eye /> {preview ? "Shuffle again" : "Preview rooms"}
           </Button>
           <Button variant="outline" disabled={running || closing} onClick={() => void handleClose()}>
             {closing ? <Loader2 className="animate-spin" /> : <DoorClosed />} Close rooms
@@ -124,23 +153,22 @@ export function OrchestrateCard({
           {run.status === "running" && (
             <>
               <p className="text-muted-foreground">
-                {STEP_LABELS[run.progress.step]}
-                {run.progress.step === "assigning" && ` ${run.progress.assigned}/${run.progress.total}`}
+                {run.progress.step === "assigning" ? movingText(run.progress) : STEP_LABELS[run.progress.step]}
               </p>
               <Progress
                 value={run.progress.total ? (run.progress.assigned / run.progress.total) * 100 : 0}
-                aria-label="Assignment progress"
+                aria-label="Moving people progress"
               />
             </>
           )}
           {run.status === "done" && (
             <div className="space-y-1">
               <p className="font-medium">
-                {run.result.assigned} people matched into {preview?.rooms.length ?? 0} rooms. Rooms are open.
+                {run.result.assigned} people are in {run.opened.rooms.length} rooms. Rooms are open.
               </p>
               {run.result.failures.length > 0 && (
                 <details className="text-destructive">
-                  <summary>{run.result.failures.length} couldn't be assigned</summary>
+                  <summary>{run.result.failures.length} couldn't be moved</summary>
                   <ul className="mt-1 list-disc pl-5">
                     {run.result.failures.map((f) => (
                       <li key={`${f.name}-${f.room}`}>
@@ -162,10 +190,20 @@ export function OrchestrateCard({
         {current && (current.joined > 0 || current.left > 0) && run.status !== "done" && (
           <p className="text-sm text-muted-foreground" aria-live="polite">
             Since this preview: {current.joined} joined, {current.left} left. Newcomers were added to the smallest
-            rooms. Reshuffle for a fresh plan.
+            rooms. Press Shuffle again for a new plan.
           </p>
         )}
-        {preview && preview.rooms.length > 0 && <RoomPlan plan={preview} config={config} />}
+        {waiting.length > 0 && run.status === "done" && (
+          <Button variant="secondary" disabled={run.placing} onClick={() => void handlePlaceWaiting()}>
+            {run.placing ? <Loader2 className="animate-spin" /> : <UserPlus />}
+            {waiting.length} {waiting.length === 1 ? "person isn't" : "people aren't"} in a room yet · Put them in rooms
+          </Button>
+        )}
+        {run.status === "done" ? (
+          <RoomPlan plan={run.opened} config={config} />
+        ) : (
+          preview && preview.rooms.length > 0 && <RoomPlan plan={preview} config={config} />
+        )}
       </CardFooter>
     </Card>
   )

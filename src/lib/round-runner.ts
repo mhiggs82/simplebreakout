@@ -3,7 +3,7 @@ import type { ConfigureBreakoutRoomsOptions } from "@zoom/appssdk"
 import { emptyHistory, recordRound, type History } from "@/lib/matchmaking/rounds"
 import type { MatchPlan } from "@/lib/matchmaking/types"
 import { encode, type Message, type RoundInfo } from "@/lib/messages"
-import { orchestrate, type AssignmentFailure } from "@/lib/orchestrate"
+import { orchestrate, type AssignmentFailure, type OrchestrationProgress } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 /** `rooms` steps open breakout rooms; `main` steps run in the main room (e.g. silent reflection). */
@@ -33,6 +33,8 @@ export interface RunnerState {
   seatErrors: string[]
   /** Hosts / co-hosts joining their pinned room from their own app this step. */
   seats: Seat[]
+  /** While rooms are being set up: how many people have been moved so far. */
+  moving?: OrchestrationProgress
   error?: string
 }
 
@@ -64,6 +66,12 @@ export interface RoundRunnerOptions {
   harvest?: (round: number) => boolean
   /** Pinned people the SDK can't assign (hosts / co-hosts), seated via their own app. */
   seats?: (round: number) => Seat[]
+  /**
+   * Also post each step's task to the Zoom meeting chat, so people without
+   * the app see it too. Posted before rooms open, while everyone is still
+   * in the main room.
+   */
+  chat?: boolean
   selfUuid: string
   onChange: (state: RunnerState) => void
   /** Warn this many seconds before a round closes. */
@@ -123,6 +131,25 @@ export class RoundRunner {
 
   private broadcast(message: Message) {
     void this.opts.client.sendMessage({ payload: encode(message) }).catch(() => {})
+  }
+
+  private postToChat(message: string) {
+    if (!this.opts.chat) return
+    void this.opts.client.sendMessageToChat({ message }).catch(() => {})
+  }
+
+  /** e.g. "Round 2 of 3 · Pairs · 5 min: What surprised you?" */
+  private postTask(round: number) {
+    const { total, label, prompt, kind } = this.state
+    const head = [
+      label ? `Step ${round + 1} of ${total}` : `Round ${round + 1} of ${total}`,
+      label,
+      `${this.minutesFor(round)} min`,
+      kind === "main" ? "main room" : undefined,
+    ]
+      .filter(Boolean)
+      .join(" · ")
+    this.postToChat(prompt ? `${head}: ${prompt}` : head)
   }
 
   private broadcastRound() {
@@ -186,6 +213,7 @@ export class RoundRunner {
     const label = this.opts.label?.(round)
     this.set({ phase: "preparing", round, prompt, kind, label, endsAt: null, remainingMs: null })
     if (kind === "main") {
+      this.postTask(round)
       this.openMainStep(Date.now() + this.minutesFor(round) * 60_000)
       return
     }
@@ -205,8 +233,11 @@ export class RoundRunner {
       const plan = this.opts.plan(round, this.history, this.previous)
       this.set({ plan })
       if (plan.rooms.length === 0) throw new Error(plan.warnings[0] ?? "There is nobody to match.")
+      this.postTask(round)
 
-      const result = await orchestrate(this.opts.client, plan, this.opts.settings)
+      const result = await orchestrate(this.opts.client, plan, this.opts.settings, (moving) => {
+        if (generation === this.generation) this.set({ moving })
+      })
       if (generation !== this.generation) {
         // Ended while rooms were being set up: don't leave them open.
         await this.opts.client.closeBreakoutRooms().catch(() => {})
@@ -218,6 +249,7 @@ export class RoundRunner {
       const endsAt = Date.now() + this.minutesFor(round) * 60_000
       this.set({
         phase: "open",
+        moving: undefined,
         endsAt,
         roomIds: result.roomIds,
         seats,
@@ -292,6 +324,7 @@ export class RoundRunner {
     }
     this.set({ phase: "done", endsAt: null, remainingMs: null, label: this.opts.label?.(this.state.round) })
     this.broadcast({ type: "ended" })
+    if (wasRunning) this.postToChat("Welcome back to the main room.")
   }
 
   private async closeRound() {
@@ -318,6 +351,7 @@ export class RoundRunner {
       } else {
         this.set({ phase: "done" })
         this.broadcast({ type: "ended" })
+        if (this.state.kind === "rooms") this.postToChat("Welcome back to the main room.")
       }
     } catch (err) {
       if (generation === this.generation) this.set({ phase: "error", error: describe(err) })

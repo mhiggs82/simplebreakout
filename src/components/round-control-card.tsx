@@ -1,4 +1,5 @@
-import { FastForward, Loader2, Pause, Play, Plus, Sparkles, Square } from "lucide-react"
+import { useState } from "react"
+import { Check, Copy, FastForward, Loader2, Pause, Play, Plus, Presentation, Sparkles, Square } from "lucide-react"
 
 import { RoomPlan } from "@/components/room-plan"
 import { RoomVisitor } from "@/components/room-visitor"
@@ -8,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { formatClock, useNow } from "@/hooks/use-now"
 import type { useRoundRunner } from "@/hooks/use-round-runner"
 import type { MatchConfig } from "@/lib/matchmaking/types"
+import { movingText } from "@/lib/orchestrate"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 const PHASE_LABELS = {
@@ -31,7 +33,6 @@ export function RoundControlCard({
   onStart,
   config,
   client,
-  hideStart = false,
 }: {
   title: string
   description: string
@@ -43,10 +44,9 @@ export function RoundControlCard({
   /** Used by the room preview to label members. */
   config: MatchConfig
   client: ZoomClient
-  /** For activities started elsewhere (e.g. Spectrum line's grouping buttons). */
-  hideStart?: boolean
 }) {
   const { state, active } = runner
+  const [copied, setCopied] = useState<string | null>(null)
   const now = useNow(state?.phase === "open")
   const left = state?.phase === "open" && state.endsAt ? state.endsAt - now : state?.remainingMs ?? null
   const roundMs = minutes * 60_000
@@ -77,10 +77,43 @@ export function RoundControlCard({
           {left !== null && (
             <Progress value={Math.min(100, (left / roundMs) * 100)} aria-label="Time left in this round" />
           )}
-          {state.prompt && (
-            <p className="rounded-lg bg-muted p-3 text-sm">
-              <span className="font-medium">Prompt: </span>
-              {state.prompt}
+          {state.phase === "preparing" && state.moving?.step === "assigning" && (
+            <>
+              <p className="text-sm text-muted-foreground">{movingText(state.moving)}</p>
+              <Progress
+                value={state.moving.total ? (state.moving.assigned / state.moving.total) * 100 : 0}
+                aria-label="Moving people progress"
+              />
+            </>
+          )}
+          {state.prompt && active && (
+            <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
+              <p className="min-w-0 flex-1">
+                <span className="font-medium">Prompt: </span>
+                {state.prompt}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                aria-label="Copy the prompt, e.g. for Zoom's Broadcast message to all rooms"
+                onClick={() => {
+                  const text = state.prompt ?? ""
+                  void navigator.clipboard
+                    ?.writeText(text)
+                    .then(() => setCopied(text))
+                    .catch(() => {})
+                }}
+              >
+                {copied === state.prompt ? <Check /> : <Copy />}
+                {copied === state.prompt ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          )}
+          {state.phase === "done" && (
+            <p className="flex items-center gap-2 rounded-lg bg-muted p-3 text-sm">
+              <Presentation className="size-4 shrink-0" aria-hidden="true" />
+              Everyone is back. Share your slides again to carry on with the presentation.
             </p>
           )}
           {state.error && (
@@ -111,7 +144,6 @@ export function RoundControlCard({
 
       <CardFooter className="flex-col items-stretch gap-3">
         {!active ? (
-          !hideStart && (
           <>
             <Button size="lg" className="h-12 w-full text-base" disabled={!canStart} onClick={onStart}>
               <Sparkles aria-hidden="true" />
@@ -119,7 +151,6 @@ export function RoundControlCard({
             </Button>
             {startHint && <p className="text-sm text-muted-foreground">{startHint}</p>}
           </>
-          )
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {state?.phase === "paused" ? (

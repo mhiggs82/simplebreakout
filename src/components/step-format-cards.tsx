@@ -29,8 +29,8 @@ export function OneTwoFourCard({
       <CardHeader>
         <CardTitle>1-2-4-All</CardTitle>
         <CardDescription>
-          Everyone reflects alone, then shares in pairs, then pairs join into fours, then the whole group comes
-          back together. Fours send a key insight from their panel.
+          Everyone thinks alone first. Then they talk in pairs, then pairs join up into fours, and then everyone
+          comes back together. Groups of four can send their best idea from the app.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,10 +66,10 @@ export function TpsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Think-Pair-Share</CardTitle>
+        <CardTitle>Think, pair, share</CardTitle>
         <CardDescription>
-          Think alone, discuss in pairs, then share. Each pair sends its key insight from the app panel, and the
-          harvest is shared with everyone when the Share step starts.
+          Everyone thinks alone, then talks in pairs, then shares with the whole group. Pairs with the app can send
+          their best idea, and everyone sees them when the group comes back together.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,8 +103,8 @@ export function GalleryCard({
       <CardHeader>
         <CardTitle>Gallery walk</CardTitle>
         <CardDescription>
-          Groups move together from station to station. At each one they read the notes earlier groups left and
-          add their own from the app panel.
+          Groups move together from one idea to the next. At each one, they read what earlier groups wrote and add
+          their own notes in the app.
         </CardDescription>
       </CardHeader>
       <CardContent>

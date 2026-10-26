@@ -21,18 +21,18 @@ export type RoomSettings = ToggleSettings & { closeAfter: number; countDown: num
 const SETTING_LABELS: { key: keyof ToggleSettings; label: string; hint: string }[] = [
   {
     key: "automaticallyMoveParticipantsIntoRooms",
-    label: "Auto-move participants",
-    hint: "Send people straight into their room without a join prompt.",
+    label: "Move people automatically",
+    hint: "People go straight to their room. They don't have to click Join.",
   },
   {
     key: "allowParticipantsReturnToMainSession",
-    label: "Allow return to main session",
-    hint: "Participants can leave their room and rejoin the main meeting.",
+    label: "Let people come back early",
+    hint: "People can leave their room and return to the main meeting.",
   },
   {
     key: "allowParticipantsChooseRoom",
-    label: "Let participants choose",
-    hint: "Participants may switch rooms themselves after assignment.",
+    label: "Let people switch rooms",
+    hint: "People can move to a different room themselves.",
   },
 ]
 
@@ -41,6 +41,8 @@ export function RoomSettingsCard({
   onChange,
   timed,
   forceChoose = false,
+  chat,
+  onChatChange,
 }: {
   settings: RoomSettings
   onChange: (next: RoomSettings) => void
@@ -48,6 +50,9 @@ export function RoomSettingsCard({
   timed: boolean
   /** Open Space always lets people choose their room. */
   forceChoose?: boolean
+  /** Timed activities: also post each task to the Zoom chat. */
+  chat?: boolean
+  onChatChange?: (chat: boolean) => void
 }) {
   const idPrefix = useId()
   return (
@@ -78,6 +83,22 @@ export function RoomSettingsCard({
             </div>
           )
         })}
+        {chat !== undefined && onChatChange && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor={`${idPrefix}-chat`}>Post the task in Zoom chat</Label>
+              <p id={`${idPrefix}-chat-hint`} className="text-sm text-muted-foreground">
+                Students see each prompt and time limit in chat, even without the app.
+              </p>
+            </div>
+            <Switch
+              id={`${idPrefix}-chat`}
+              aria-describedby={`${idPrefix}-chat-hint`}
+              checked={chat}
+              onCheckedChange={onChatChange}
+            />
+          </div>
+        )}
         <NumberField
           label="Closing countdown"
           hint="Seconds people get to wrap up when rooms close."

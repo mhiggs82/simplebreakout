@@ -13,6 +13,7 @@ export type ZoomClient = Pick<
   | "getBreakoutRoomList"
   | "sendMessage"
   | "sendAppInvitationToAllParticipants"
+  | "sendMessageToChat"
   | "changeBreakoutRoom"
   | "addParticipantSpotlight"
   | "removeParticipantSpotlights"
@@ -33,10 +34,16 @@ const MOCK_NAMES = [
 const FIRST = ["Amara", "Ben", "Chen", "Diego", "Elif", "Fatima", "Grace", "Hugo", "Isabel", "Jonas", "Keiko", "Liam", "Maya", "Noah", "Olivia", "Pedro", "Quinn", "Rania", "Sofia", "Tariq", "Uma", "Victor", "Wen", "Xavier", "Yara", "Zane"]
 const LAST = ["Okafor", "Carter", "Wei", "Alvarez", "Yilmaz", "Al-Sayed", "Kim", "Martin", "Rossi", "Berg", "Tanaka", "O'Brien", "Patel", "Cohen", "Brown", "Santos", "Murphy", "Haddad", "Novak", "Aziz"]
 
-/** The original 20 names first, then generated ones for bigger meetings. */
+/** Some people describe themselves in their Zoom name instead of using the app. */
+const MOCK_NAME_TAGS = [" - Netherlands, Amsterdam, 14–15", " (Saudi Arabia, Riyadh, 16–17)", " | Mentor", " - Netherlands, 12–13"]
+
+/** The original 20 names first, then generated ones for bigger meetings. Every fourth name carries tags. */
 function mockName(i: number): string {
-  if (i < MOCK_NAMES.length) return MOCK_NAMES[i]
-  return `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${Math.floor(i / 100) || ""}`.trim()
+  const base =
+    i < MOCK_NAMES.length
+      ? MOCK_NAMES[i]
+      : `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${Math.floor(i / 100) || ""}`.trim()
+  return i % 4 === 3 ? base + MOCK_NAME_TAGS[Math.floor(i / 4) % MOCK_NAME_TAGS.length] : base
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -47,9 +54,6 @@ export type MockScenario =
   | "questions"
   | "round"
   | "fishbowl"
-  | "poll"
-  | "cloud"
-  | "spectrum"
   | "openspace"
   | "gallery"
 
@@ -57,14 +61,10 @@ export const MOCK_SCENARIOS: readonly MockScenario[] = [
   "questions",
   "round",
   "fishbowl",
-  "poll",
-  "cloud",
-  "spectrum",
   "openspace",
   "gallery",
 ]
 
-const MOCK_WORDS = ["curious", "energised", "tired", "hopeful", "curious", "focused", "curious", "hopeful", "calm"]
 const MOCK_INSIGHTS = [
   "Small experiments beat big plans",
   "We need clearer ownership",
@@ -170,9 +170,8 @@ export function createMockZoomClient(
         m: "attributes",
         r: [],
         c: [
-          ["country", "Country", ["United States", "United Kingdom", "Netherlands", "Other"]],
-          ["language", "Language", ["English", "Spanish", "Arabic", "Other"]],
-          ["childAge", "Child's age", ["0–4", "5–11", "12–14", "15–18"]],
+          ["level", "Level", ["A2", "B1", "B2", "C1"]],
+          ["firstLanguage", "First language", ["Arabic", "Spanish", "Chinese", "Other"]],
         ],
       },
       800,
@@ -183,37 +182,11 @@ export function createMockZoomClient(
     fromHost({ t: "sb1/warning", s: 60 }, 6_000)
   } else if (asAttendee && scenario === "fishbowl") {
     fromHost({ t: "sb1/fishbowl", i: ["mock-1", "mock-2", "mock-3", "mock-4"] }, 800)
-  } else if (asAttendee && scenario === "poll") {
-    fromHost({ t: "sb1/poll", i: "demo", k: "poll", q: "How's your energy right now?", o: ["1 · Running on empty", "2", "3", "4", "5 · Fully charged"] }, 800)
-    fromHost({ t: "sb1/results", i: "demo", k: "poll", q: "How's your energy right now?", o: ["1 · Running on empty", "2", "3", "4", "5 · Fully charged"], n: [1, 3, 7, 6, 2] }, 5_000)
-  } else if (asAttendee && scenario === "cloud") {
-    fromHost({ t: "sb1/poll", i: "demo", k: "cloud", q: "One word for how you're arriving today" }, 800)
-    fromHost({ t: "sb1/results", i: "demo", k: "cloud", q: "One word for how you're arriving today", w: [["curious", 6], ["hopeful", 4], ["tired", 3], ["focused", 2], ["calm", 1], ["excited", 1]] }, 5_000)
-  } else if (asAttendee && scenario === "spectrum") {
-    fromHost({ t: "sb1/poll", i: "demo", k: "spectrum", q: "Remote work makes collaboration easier", b: ["Strongly disagree", "Strongly agree"] }, 800)
   } else if (asAttendee && scenario === "openspace") {
     fromHost({ t: "sb1/tables", s: "demo", n: 4, r: [["room-1", "Funding ideas", 3, 6], ["room-2", "Tools we love", 6, 6], ["room-3", "Hiring", 1, 0], ["room-4", "Wild card", 0, 4]] }, 800)
   } else if (asAttendee && scenario === "gallery") {
     fromHost({ t: "sb1/round", a: "gallery", n: 2, o: 4, e: Date.now() + 300_000, p: "What's missing from this idea?", l: "Station 2 of 4", h: 1 }, 800)
-    fromHost({ t: "sb1/station", r: "Onboarding", m: [self.participantUUID], n: ["Pair new joiners with a buddy", "A first-week checklist"] }, 1_000)
-  }
-
-  /** Simulated attendees answer the host's live question. */
-  function vote(payload: Record<string, unknown>) {
-    const options = (payload.o as string[]) ?? []
-    participants.slice(1).forEach((p, i) => {
-      if (i % 6 === 5) return // a few people don't answer
-      const v =
-        payload.k === "poll"
-          ? { c: Math.min(options.length - 1, Math.floor((Math.random() + Math.random()) * options.length / 2)) }
-          : payload.k === "cloud"
-            ? { x: pick(MOCK_WORDS) }
-            : { v: i < 10 ? 1 + Math.floor(Math.random() * 4) : 6 + Math.floor(Math.random() * 5) }
-      setTimeout(
-        () => emit("onMessage", { timestamp: Date.now(), participantUUID: p.participantUUID, payload: { t: "sb1/vote", i: payload.i, ...v } }),
-        300 + Math.random() * 1500,
-      )
-    })
+    fromHost({ t: "sb1/station", r: "Text A", m: [self.participantUUID], n: ["Main idea: remote learning needs routine", "Key word: self-discipline"] }, 1_000)
   }
 
   /** In harvest steps, one person per room sends an insight. */
@@ -310,7 +283,6 @@ export function createMockZoomClient(
       if (flaky()) throw { code: "10038", message: "Failed to post message." }
       if (!asAttendee && payload.t === "sb1/config") answerQuestionnaire(payload)
       if (!asAttendee && payload.t === "sb1/fishbowl") raiseSomeHands((payload.i as string[]) ?? [])
-      if (!asAttendee && payload.t === "sb1/poll") vote(payload)
       if (!asAttendee && payload.t === "sb1/round" && payload.h === 1 && payload.k !== "m") sendInsights()
       return ok
     },
@@ -334,6 +306,12 @@ export function createMockZoomClient(
     },
     async sendAppInvitationToAllParticipants() {
       return { invitationUUID: "mock-invitation" }
+    },
+    async sendMessageToChat({ message }) {
+      await delay(50)
+      if (flaky()) throw { code: "10038", message: "Failed to post to chat." }
+      console.info(`[mock chat] ${message}`)
+      return { result: [{ channelId: "mock-meeting-chat", messageId: Math.random().toString(36).slice(2) }] }
     },
     addEventListener(event, handler) {
       if (!listeners.has(event)) listeners.set(event, new Set())

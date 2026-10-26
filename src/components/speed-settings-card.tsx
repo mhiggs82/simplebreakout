@@ -1,4 +1,5 @@
-import { LinesField, NumberField, RoundFields } from "@/components/round-fields"
+import { RoomSizeField } from "@/components/room-size-field"
+import { LinesField, RoundFields } from "@/components/round-fields"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ICEBREAKERS, type SpeedSettings } from "@/hooks/use-activity-settings"
 
@@ -6,29 +7,29 @@ export function SpeedSettingsCard({
   value,
   onChange,
   disabled,
+  people,
 }: {
   value: SpeedSettings
   onChange: (next: SpeedSettings) => void
   disabled: boolean
+  /** People who will be put in rooms, for the room-size summary. */
+  people: number
 }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Speed Networking</CardTitle>
+        <CardTitle>Pairs</CardTitle>
         <CardDescription>
-          Short timed rounds. Every round reshuffles people so nobody meets the same person twice, for as long as
-          that's possible.
+          Short, timed chats. Each round, everyone gets someone new to talk to, for as long as that's possible.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <fieldset disabled={disabled} className="space-y-4">
-          <NumberField
-            label="People per room"
-            hint="2 for one-to-ones, 3–4 for small circles."
+          <RoomSizeField
             value={value.groupSize}
-            min={2}
-            max={8}
             onChange={(groupSize) => onChange({ ...value, groupSize })}
+            people={people}
+            max={8}
           />
           <RoundFields
             value={value}

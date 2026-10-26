@@ -1,7 +1,8 @@
-import { Plus, Send, Shuffle, Tags, Trash2, UserPlus, Users } from "lucide-react"
+import { MessageSquare, Plus, Send, Shuffle, Tags, Trash2, UserPlus, Users } from "lucide-react"
 import { useId, useState } from "react"
 
 import { LinesField } from "@/components/round-fields"
+import { RoomSizeField } from "@/components/room-size-field"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { HostSession } from "@/hooks/use-host-session"
 import type { CategoryDef, MatchConfig, MatchMode } from "@/lib/matchmaking/types"
 import { MAX_MESSAGE_BYTES } from "@/lib/messages"
+import { nameTagInstructions } from "@/lib/name-tags"
 
 const NO_ANCHOR = "__none"
 
@@ -36,7 +38,7 @@ function RolesEditor({ config, update }: { config: MatchConfig; update: (patch: 
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Participants pick one role. Each room gets a balanced mix of roles.
+        Each person picks a role, e.g. mentor or mentee. Every room gets a fair mix of roles.
       </p>
       <ul className="space-y-2" aria-label="Roles">
         {config.roles.map((role, i) => (
@@ -68,7 +70,7 @@ function RolesEditor({ config, update }: { config: MatchConfig; update: (patch: 
         <Plus /> Add role
       </Button>
       <div className="space-y-1.5">
-        <Label htmlFor={anchorId}>One room per</Label>
+        <Label htmlFor={anchorId}>Give each of these their own room</Label>
         <Select
           value={config.anchorRoleId ?? NO_ANCHOR}
           onValueChange={(v) => update({ anchorRoleId: v === NO_ANCHOR ? null : v })}
@@ -77,7 +79,7 @@ function RolesEditor({ config, update }: { config: MatchConfig; update: (patch: 
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_ANCHOR}>No anchor (use room size)</SelectItem>
+            <SelectItem value={NO_ANCHOR}>Nobody (use people per room)</SelectItem>
             {config.roles.map((role) => (
               <SelectItem key={role.id} value={role.id}>
                 {role.label || "Untitled role"}
@@ -86,7 +88,7 @@ function RolesEditor({ config, update }: { config: MatchConfig; update: (patch: 
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          e.g. every Table Host gets their own table and guests are shared out evenly.
+          e.g. every mentor gets their own room, and mentees are shared out evenly.
         </p>
       </div>
     </div>
@@ -139,7 +141,7 @@ function CategoryRow({
       />
       <div className="flex items-center justify-between">
         <Label htmlFor={id} className="font-normal text-muted-foreground">
-          Match on this
+          Use this to make rooms
         </Label>
         <Switch id={id} checked={matched} onCheckedChange={onToggle} />
       </div>
@@ -156,7 +158,8 @@ function AttributesEditor({ config, update }: { config: MatchConfig; update: (pa
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Participants answer each question. Rooms are formed from the switched-on answers, top question first.
+        People answer each question. Rooms are made from the answers you switch on. The top question matters most;
+        if there aren't enough exact matches, people go to the closest room.
       </p>
       <ul className="space-y-2" aria-label="Questions">
         {config.categories.map((category) => (
@@ -201,7 +204,7 @@ function AttributesEditor({ config, update }: { config: MatchConfig; update: (pa
       >
         <div className="flex items-center gap-2">
           <RadioGroupItem value="similar" id="strategy-similar" />
-          <Label htmlFor="strategy-similar" className="font-normal">Group people with the same answers</Label>
+          <Label htmlFor="strategy-similar" className="font-normal">Put people with the same answers together</Label>
         </div>
         <div className="flex items-center gap-2">
           <RadioGroupItem value="diverse" id="strategy-diverse" />
@@ -214,9 +217,10 @@ function AttributesEditor({ config, update }: { config: MatchConfig; update: (pa
 
 export function MatchSettingsCard({ session, disabled }: { session: HostSession; disabled: boolean }) {
   const { config, setConfig } = session
-  const sizeId = useId()
   const [sendError, setSendError] = useState<string | null>(null)
   const [invited, setInvited] = useState(false)
+  const [asked, setAsked] = useState(false)
+  const nameTagText = nameTagInstructions(config)
   const update = (patch: Partial<MatchConfig>) => setConfig((prev) => ({ ...prev, ...patch }))
   const asksQuestions = config.mode !== "random"
   const tooLarge = session.questionsBytes > MAX_MESSAGE_BYTES
@@ -225,19 +229,22 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Matchmaking</CardTitle>
-        <CardDescription>How should people be grouped?</CardDescription>
+        <CardTitle>Groups</CardTitle>
+        <CardDescription>
+          Split everyone into breakout rooms once. Mix everyone at random, or let people tell you who they are
+          and group them by that.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <fieldset disabled={disabled} className="space-y-4">
           <Tabs value={config.mode} onValueChange={(v) => update({ mode: v as MatchMode })}>
             <TabsList className="w-full">
-              <TabsTrigger value="random"><Shuffle /> Random</TabsTrigger>
-              <TabsTrigger value="roles"><Users /> Roles</TabsTrigger>
-              <TabsTrigger value="attributes"><Tags /> Attributes</TabsTrigger>
+              <TabsTrigger value="random"><Shuffle /> Mix</TabsTrigger>
+              <TabsTrigger value="roles"><Users /> By role</TabsTrigger>
+              <TabsTrigger value="attributes"><Tags /> By answers</TabsTrigger>
             </TabsList>
             <TabsContent value="random" className="pt-2">
-              <p className="text-sm text-muted-foreground">Shuffle everyone into evenly sized rooms.</p>
+              <p className="text-sm text-muted-foreground">Everyone is mixed at random into rooms of the same size.</p>
             </TabsContent>
             <TabsContent value="roles" className="pt-2">
               <RolesEditor config={config} update={update} />
@@ -249,7 +256,7 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
 
           <LinesField
             label="Room names (optional)"
-            hint="One per line. Replaces numbered names like Room 1 or Table 2, in order."
+            hint="One per line. Used instead of Room 1, Room 2… in order."
             value={config.roomLabels ?? []}
             maxLength={40}
             placeholder={"Lagos\nLima"}
@@ -257,20 +264,11 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
           />
 
           {!groupSizeUnused && (
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor={sizeId}>People per room</Label>
-              <Input
-                id={sizeId}
-                type="number"
-                min={2}
-                max={20}
-                className="w-20"
-                value={config.groupSize}
-                onChange={(e) =>
-                  update({ groupSize: Math.min(20, Math.max(2, Number(e.target.value) || 2)) })
-                }
-              />
-            </div>
+            <RoomSizeField
+              value={config.groupSize}
+              onChange={(groupSize) => update({ groupSize })}
+              people={session.candidates.length}
+            />
           )}
         </fieldset>
       </CardContent>
@@ -286,8 +284,26 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
             }}
           >
             <Send />
-            {session.collecting ? "Resend questions to participants" : "Send questions to participants"}
+            {session.collecting ? "Send the questions again" : "Send the questions to people with the app"}
           </Button>
+          {nameTagText && (
+            <>
+              <Button
+                variant="outline"
+                disabled={disabled}
+                onClick={() => {
+                  setAsked(true)
+                  session.askForNameTags().catch(() => setAsked(false))
+                }}
+              >
+                <MessageSquare /> {asked ? "Asked in chat. Ask again" : "Ask everyone in chat to add it to their name"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                No app needed. People rename themselves in Zoom, and you see their answers in Participants. Chat
+                message: <q>{nameTagText}</q>
+              </p>
+            </>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -297,10 +313,10 @@ export function MatchSettingsCard({ session, disabled }: { session: HostSession;
               session.inviteEveryone().catch(() => setInvited(false))
             }}
           >
-            <UserPlus /> {invited ? "Invitation sent" : "Invite everyone to open the app"}
+            <UserPlus /> {invited ? "Invitation sent" : "Invite people to open the app"}
           </Button>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" aria-live="polite">
-            {session.questionsOutdated && <Badge variant="secondary">Questions changed: resend them</Badge>}
+            {session.questionsOutdated && <Badge variant="secondary">Questions changed: send them again</Badge>}
             {tooLarge && (
               <span className="text-destructive">
                 Questions are {session.questionsBytes} bytes; Zoom allows {MAX_MESSAGE_BYTES}. Shorten some options.

@@ -37,10 +37,11 @@ export function OpenSpaceCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Open Space</CardTitle>
+        <CardTitle>Pick a room</CardTitle>
         <CardDescription>
-          Name the tables and let people choose where to go, and move whenever they like. Seat limits are soft:
-          full tables are disabled in the app, but Zoom's own breakout menu still works.
+          Give each room a topic. People choose where to go and can move whenever they like. Room limits are a
+          guide: full rooms are greyed out in the app, but people can still join from Zoom's own Breakout Rooms
+          button.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

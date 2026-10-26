@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   ChevronDown,
   Coffee,
   Fish,
@@ -8,7 +7,6 @@ import {
   Layers,
   Lightbulb,
   MoreHorizontal,
-  SlidersHorizontal,
   Sparkles,
   Timer,
 } from "lucide-react"
@@ -27,20 +25,18 @@ import type { Activity } from "@/lib/matchmaking/types"
 type Item = { value: Activity; label: string; icon: typeof Sparkles; description?: string }
 
 const MAIN: Item[] = [
-  { value: "match", label: "Match", icon: Sparkles },
-  { value: "cafe", label: "Café", icon: Coffee },
-  { value: "speed", label: "Speed", icon: Timer },
+  { value: "match", label: "Groups", icon: Sparkles },
+  { value: "speed", label: "Pairs", icon: Timer },
+  { value: "cafe", label: "Rotate", icon: Coffee },
 ]
 
-/** Everything beyond the three everyday formats lives under "More" to keep the dashboard calm. */
+/** Everything beyond the three everyday formats (groups, pairs, rotations) lives under "More" to keep the dashboard calm. */
 export const MORE: Item[] = [
-  { value: "oneTwoFour", label: "1-2-4-All", icon: Layers, description: "Reflect alone, then pairs, fours, everyone" },
-  { value: "openSpace", label: "Open Space", icon: LayoutGrid, description: "People pick a named table themselves" },
-  { value: "tps", label: "Think-Pair-Share", icon: Lightbulb, description: "Think, discuss in pairs, harvest insights" },
-  { value: "pulse", label: "Polls & word cloud", icon: BarChart3, description: "Quick pulse checks, results when you're ready" },
-  { value: "spectrum", label: "Spectrum line", icon: SlidersHorizontal, description: "Place yourself 1–10, then pair opposites" },
-  { value: "gallery", label: "Gallery walk", icon: Frame, description: "Groups rotate through stations leaving notes" },
-  { value: "fishbowl", label: "Fishbowl", icon: Fish, description: "Inner circle on stage; others watch and swap in" },
+  { value: "oneTwoFour", label: "1-2-4-All", icon: Layers, description: "Think alone, then pairs, then fours, then everyone" },
+  { value: "openSpace", label: "Pick a room", icon: LayoutGrid, description: "People choose the topic room they want" },
+  { value: "tps", label: "Think, pair, share", icon: Lightbulb, description: "Think alone, talk in pairs, share with everyone" },
+  { value: "gallery", label: "Gallery walk", icon: Frame, description: "Groups visit each idea in turn and leave notes (needs the app)" },
+  { value: "fishbowl", label: "Fishbowl", icon: Fish, description: "A few people talk on screen while everyone else listens" },
 ]
 
 export function ActivityNav({

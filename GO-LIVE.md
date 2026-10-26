@@ -1,6 +1,6 @@
-# Taking Global Breakout live in Zoom
+# Taking Easy Breakouts live in Zoom
 
-This guide gets Global Breakout from this repository into real Zoom meetings with real people. There are three parts:
+This guide gets Easy Breakouts from this repository into real Zoom meetings with real people. There are three parts:
 
 1. **Host the app**: put the built website on the internet over HTTPS.
 2. **Register it with Zoom**: create the Zoom App in the Zoom Marketplace and point it at your website.
@@ -12,7 +12,7 @@ Hosting is done (see below). The Zoom setup takes about 30 minutes the first tim
 
 ## 1. Hosting (done)
 
-Global Breakout is live:
+Easy Breakouts is live:
 
 | | |
 | --- | --- |
@@ -46,18 +46,18 @@ Sign in at **marketplace.zoom.us** with the Zoom account you'll host meetings fr
 
 1. **Develop → Build App → General App** (user-managed).
 2. **Basic Information**
-   - App name: **Global Breakout**
-   - **OAuth Redirect URL**: `https://breakout.getparentwise.com/`. After someone adds the app, Zoom sends them here and they see a "Global Breakout is added to your Zoom" page.
+   - App name: **Easy Breakouts**
+   - **OAuth Redirect URL**: `https://breakout.getparentwise.com/`. After someone adds the app, Zoom sends them here and they see a "Easy Breakouts is added to your Zoom" page.
    - **OAuth Allow List**: `https://breakout.getparentwise.com/`
 3. **Features → Surface**
    - Select **Meetings**, i.e. the in-client app.
    - **Home URL**: `https://breakout.getparentwise.com/`
    - **Domain Allow List**: `breakout.getparentwise.com`
 4. **Features → Zoom App SDK → Add APIs.** Add every API the app uses:
-   `getMeetingContext`, `getUserContext`, `onMyUserContextChange`, `getRunningContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `onBreakoutRoomChange`, `sendMessage`, `onMessage`, `connect`, `onConnect`, `postMessage`, `sendAppInvitationToAllParticipants`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`.
+   `getMeetingContext`, `getUserContext`, `onMyUserContextChange`, `getRunningContext`, `getMeetingParticipants`, `onParticipantChange`, `createBreakoutRooms`, `configureBreakoutRooms`, `openBreakoutRooms`, `closeBreakoutRooms`, `getBreakoutRoomList`, `assignParticipantToBreakoutRoom`, `changeBreakoutRoom`, `onBreakoutRoomChange`, `sendMessage`, `onMessage`, `connect`, `onConnect`, `postMessage`, `sendAppInvitationToAllParticipants`, `sendMessageToChat`, `addParticipantSpotlight`, `removeParticipantSpotlights`, `getParticipantSpotlights`.
 5. **Scopes**: add `zoomapp:inmeeting`.
 6. **Local Test → Add App Now.** Approve the permissions. You'll land on the "added" page.
-7. Open the **Zoom desktop app** (version 5.15.5 or later), start a meeting, click **Apps**, then **Global Breakout**.
+7. Open the **Zoom desktop app** (version 5.15.5 or later), start a meeting, click **Apps**, then **Easy Breakouts**.
 
 > Fill in the **Development** tab first; that's what Local Test uses. Put `https://breakout.getparentwise.com/` in both the Development and Production sections.
 
@@ -74,20 +74,19 @@ Zoom has three levels of access:
 | **People outside your account** | **Yes** | **Beta:** "Request to Share", reviewed in 3–4 business days. Needs security information, lasts 4 weeks, with a limited number of testers. **Or publish** (it can be unlisted) after a full review. |
 
 ### The good news: most formats only need *you* to have the app
-Breakout rooms are a built-in Zoom feature. When your app moves people into rooms, **participants don't need Global Breakout installed**: they just get Zoom's normal "Join breakout room" prompt. So you can run real sessions with **any attendees, from any account, today**, without approval:
+Breakout rooms are a built-in Zoom feature. When your app moves people into rooms, **participants don't need Easy Breakouts installed**: they just get Zoom's normal "Join breakout room" prompt. So you can run real sessions with **any attendees, from any account, today**, without approval:
 
 | Format | Works for attendees without the app? |
 | --- | --- |
 | Match: Random | ✅ Fully |
 | Match: Roles / Attributes | ✅ You set roles and answers for people from the Participants list. Attendees can't answer from their own panel. |
-| World Café, Speed Networking | ✅ Fully. Round prompts appear only for people with the app, so read them aloud or paste them in chat. |
+| Rotating tables (World Café), Quick pairs (Speed) | ✅ Fully. Each round's task is also posted to the Zoom chat, so students without the app see it. |
 | 1-2-4-All, Think-Pair-Share, Gallery walk | ✅ The rooms and rotations work. ❌ Sending insights and notes needs the app. |
 | Open Space | ✅ Self-select is on, so people pick tables from **Zoom's own Breakout Rooms menu**. ❌ The app's table picker with head-counts needs the app. |
 | Fishbowl | ✅ The spotlight stage works. Observers use **Zoom's Raise Hand** instead of the app's button. |
-| Polls & word cloud, Spectrum line | ❌ These need attendees to have the app. Use Zoom's built-in Polls in the meantime. |
 
 **Suggested path**
-1. **This week (no approval):** run real sessions where only you have the app, using Match, Café, Speed, 1-2-4-All and Open Space. Add 1–2 colleagues to your Zoom account so you can also test the attendee panel and polls.
+1. **This week (no approval):** run real sessions where only you have the app, using Match, Café, Speed, 1-2-4-All and Open Space. Add 1–2 colleagues to your Zoom account so you can also test the attendee panel.
 2. **Then:** request Beta sharing from Zoom to try the full attendee experience with outside testers.
 3. **Later:** publish (unlisted, or publicly in the Marketplace) once you're happy.
 
@@ -97,16 +96,16 @@ Breakout rooms are a built-in Zoom feature. When your app moves people into room
 
 **Who you need:** you (host), one co-host, and one attendee. The attendee should ideally be a user in your account who has added the app.
 
-1. **Open:** Apps → Global Breakout. Your role badge shows **Host**.
+1. **Open:** Apps → Easy Breakouts. Your role badge shows **Host**.
 2. **Match (Random):** click **Orchestrate Matchmaking**. The rooms open and people get Zoom's join prompt. Then **Close rooms**.
 3. **World Café:** 2 tables, co-host pinned to Table 1, 2 rotations of 1 minute.
    - Check the co-host's panel says "You're hosting Table 1" and they move automatically.
    - Check the attendee moves each round.
    - Check whether the attendee panel shows the prompt and countdown **while they're inside a room**. This is the key unknown.
+   - Check the task appears in the **Zoom chat** before rooms open, and whether people can still see it once they're inside a room. Also check "Welcome back to the main room." at the end.
 4. **Visit a room:** use **Visit a room** and **Back to main room**.
-5. **Polls:** ask a poll, have the attendee answer, then **Share results**.
-6. **Open Space:** open it, then have the attendee pick a table from the app *and* from Zoom's Breakout Rooms menu.
-7. **Fishbowl:** put the co-host on stage. Their video must be on for the spotlight.
+5. **Open Space:** open it, then have the attendee pick a table from the app *and* from Zoom's Breakout Rooms menu.
+6. **Fishbowl:** put the co-host on stage. Their video must be on for the spotlight.
 
 Note anything odd: wording, waiting times, or anything that didn't move.
 
@@ -116,7 +115,7 @@ Note anything odd: wording, waiting times, or anything that didn't move.
 | Symptom | Fix |
 | --- | --- |
 | Blank panel, or "Missing OWASP Secure Headers" | Check the four headers with `curl -sI`. Make sure `vercel.json` was deployed and the URL in Zoom is `https://breakout.getparentwise.com/`. |
-| "Can't start Global Breakout: Could not reach the Zoom client" | You opened the URL in a normal browser. Open it from **Apps** inside a Zoom meeting. |
+| "Can't start Easy Breakouts: Could not reach the Zoom client" | You opened the URL in a normal browser. Open it from **Apps** inside a Zoom meeting. |
 | A button does nothing or shows a permission error | The API isn't added in **Zoom App SDK → Add APIs**. Add it, then re-add the app (Local Test). |
 | "Zoom only shares the participant list with the meeting host" | Start the meeting yourself, or make sure you're the host rather than a co-host. |
 | Participants don't get moved | Check that breakout rooms are enabled in your Zoom web settings (Settings → In Meeting (Advanced) → Breakout room). |

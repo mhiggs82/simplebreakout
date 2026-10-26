@@ -49,41 +49,10 @@ export type Message =
   | { type: "fishbowl"; inner: string[] }
   | { type: "raise" }
   | { type: "lower" }
-  | { type: "poll"; poll: PulseQuestion }
-  | { type: "vote"; pollId: string; vote: Vote }
-  | { type: "results"; results: PulseResults }
   | { type: "insight"; text: string }
   | { type: "harvest"; items: HarvestItem[] }
   | { type: "station"; room: string; members: string[]; notes: string[] }
   | { type: "tables"; sessionId: string; total: number; tables: OpenTable[] }
-
-export type PulseKind = "poll" | "cloud" | "spectrum"
-
-/** A live question: a single-choice poll, a word cloud or a 1–10 spectrum. */
-export interface PulseQuestion {
-  id: string
-  kind: PulseKind
-  question: string
-  /** Poll answer options. */
-  options?: string[]
-  /** Spectrum end labels: [left, right]. */
-  labels?: [string, string]
-}
-
-export type Vote = { choice: number } | { text: string } | { value: number }
-
-/** Anonymous results the host chooses to share. */
-export interface PulseResults {
-  id: string
-  kind: PulseKind
-  question: string
-  /** Poll: count per option. Spectrum: count per value 1–10. */
-  counts?: number[]
-  options?: string[]
-  labels?: [string, string]
-  /** Word cloud: [word, count], most frequent first. */
-  words?: [string, number][]
-}
 
 export interface HarvestItem {
   room: string
@@ -165,38 +134,6 @@ export function encode(message: Message): JSONObject {
       return { t: PREFIX + "seat", u: message.participantUUID, r: message.roomUuid, n: message.roomName }
     case "fishbowl":
       return { t: PREFIX + "fishbowl", i: message.inner }
-    case "poll": {
-      const q = message.poll
-      return {
-        t: PREFIX + "poll",
-        i: q.id,
-        k: q.kind,
-        q: q.question,
-        ...(q.options ? { o: q.options } : {}),
-        ...(q.labels ? { b: q.labels } : {}),
-      }
-    }
-    case "vote": {
-      const v = message.vote
-      return {
-        t: PREFIX + "vote",
-        i: message.pollId,
-        ...("choice" in v ? { c: v.choice } : "text" in v ? { x: v.text } : { v: v.value }),
-      }
-    }
-    case "results": {
-      const r = message.results
-      return {
-        t: PREFIX + "results",
-        i: r.id,
-        k: r.kind,
-        q: r.question,
-        ...(r.counts ? { n: r.counts } : {}),
-        ...(r.options ? { o: r.options } : {}),
-        ...(r.labels ? { b: r.labels } : {}),
-        ...(r.words ? { w: r.words } : {}),
-      }
-    }
     case "insight":
       return { t: PREFIX + "insight", x: message.text }
     case "harvest":
@@ -228,7 +165,6 @@ const isString = (v: unknown): v is string => typeof v === "string" && v.length 
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isString)
 const isPair = (v: unknown): v is [string, string] =>
   Array.isArray(v) && v.length === 2 && isString(v[0]) && isString(v[1])
-const isKind = (v: unknown): v is PulseKind => v === "poll" || v === "cloud" || v === "spectrum"
 
 /**
  * Keep as many items as fit in one message. `make` builds the message from
@@ -319,40 +255,6 @@ export function decode(payload: unknown): Message | null {
         : null
     case "fishbowl":
       return isStringArray(p.i) && p.i.length <= 9 ? { type: "fishbowl", inner: p.i } : null
-    case "poll": {
-      if (!isString(p.i) || !isKind(p.k) || !isString(p.q)) return null
-      const options = isStringArray(p.o) && p.o.length >= 2 && p.o.length <= 8 ? p.o : undefined
-      const labels = isPair(p.b) ? p.b : undefined
-      if (p.k === "poll" && !options) return null
-      return { type: "poll", poll: { id: p.i, kind: p.k, question: p.q, options, labels } }
-    }
-    case "vote": {
-      if (!isString(p.i)) return null
-      let vote: Vote | null = null
-      if (Number.isInteger(p.c) && (p.c as number) >= 0 && (p.c as number) < 8) vote = { choice: p.c as number }
-      else if (isString(p.x) && p.x.trim()) vote = { text: p.x.slice(0, 60) }
-      else if (Number.isInteger(p.v) && (p.v as number) >= 1 && (p.v as number) <= 10) vote = { value: p.v as number }
-      return vote ? { type: "vote", pollId: p.i, vote } : null
-    }
-    case "results": {
-      if (!isString(p.i) || !isKind(p.k) || !isString(p.q)) return null
-      const counts = Array.isArray(p.n) && p.n.every((c) => Number.isInteger(c) && c >= 0) ? (p.n as number[]) : undefined
-      const words = Array.isArray(p.w)
-        ? (p.w.filter((w) => Array.isArray(w) && isString(w[0]) && Number.isInteger(w[1])) as [string, number][])
-        : undefined
-      return {
-        type: "results",
-        results: {
-          id: p.i,
-          kind: p.k,
-          question: p.q,
-          counts,
-          words,
-          options: isStringArray(p.o) ? p.o : undefined,
-          labels: isPair(p.b) ? p.b : undefined,
-        },
-      }
-    }
     case "insight":
       return isString(p.x) && p.x.trim() ? { type: "insight", text: p.x.trim() } : null
     case "harvest":

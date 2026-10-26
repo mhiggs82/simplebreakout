@@ -32,9 +32,9 @@ export function RoomPlan({
           ))}
         </ul>
       )}
-      <ol className="grid gap-2" aria-label="Planned rooms">
+      <ol className="grid grid-cols-1 gap-2" aria-label="Planned rooms">
         {plan.rooms.map((room) => (
-          <li key={room.name} className="rounded-lg border p-3">
+          <li key={room.name} className="min-w-0 rounded-lg border p-3">
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="truncate text-sm font-medium">{room.name}</h3>
               <span className="shrink-0 text-xs text-muted-foreground">

@@ -156,6 +156,28 @@ describe("attributes mode", () => {
     expect(plan.rooms).toHaveLength(2)
   })
 
+  it("keeps rooms a normal size when only a few people answered", () => {
+    const input = [
+      ...people(3, (i) => ({ uuid: `a${i}`, tags: { lang: "English", age: "0-4" } })),
+      ...people(13, (i) => ({ uuid: `w${i}` })),
+    ]
+    const plan = buildMatchPlan(input, { ...attrs, groupSize: 4 }, seeded(2))
+    expect(plan.rooms).toHaveLength(4)
+    for (const room of plan.rooms) expect(room.members.length).toBeLessThanOrEqual(5)
+    // The three who answered alike stay together.
+    expect(plan.rooms.filter((r) => r.members.some((m) => m.uuid.startsWith("a")))).toHaveLength(1)
+    expect(allUuids(plan)).toHaveLength(16)
+  })
+
+  it("gives people without answers rooms of their own when there are enough of them", () => {
+    const input = [
+      ...people(4, (i) => ({ uuid: `a${i}`, tags: { lang: "English", age: "0-4" } })),
+      ...people(8, (i) => ({ uuid: `w${i}` })),
+    ]
+    const plan = buildMatchPlan(input, { ...attrs, groupSize: 4 }, seeded(5))
+    expect(plan.rooms.map((r) => r.members.length)).toEqual([4, 4, 4])
+  })
+
   it("spreads answers across rooms in diverse mode", () => {
     const input = people(8, (i) => ({ tags: { lang: i < 4 ? "English" : "Spanish" } }))
     const plan = buildMatchPlan(
@@ -199,6 +221,43 @@ describe("attributes mode, partial matches", () => {
     const plan = buildMatchPlan(input, { ...base, mode: "roles", anchorRoleId: "host" }, seeded(14))
     expect(plan.rooms).toHaveLength(1)
     expect(plan.warnings.join(" ")).toMatch(/about 20 people/)
+  })
+})
+
+describe("attributes mode, closest match", () => {
+  const parents: MatchConfig = {
+    ...base,
+    mode: "attributes",
+    groupSize: 3,
+    categories: [
+      { id: "country", label: "Country", options: ["Netherlands", "Saudi Arabia"] },
+      { id: "teen", label: "Teen's age", options: ["12–13", "14–15", "16–17", "18+"] },
+    ],
+    matchOn: ["country", "teen"],
+  }
+
+  it("seats a leftover parent with the nearest teen age group", () => {
+    const input = [
+      ...people(3, (i) => ({ uuid: `young${i}`, tags: { country: "Netherlands", teen: "12–13" } })),
+      ...people(3, (i) => ({ uuid: `old${i}`, tags: { country: "Netherlands", teen: "18+" } })),
+      { uuid: "near", name: "Near", tags: { country: "Netherlands", teen: "16–17" } },
+    ]
+    for (let seed = 1; seed <= 5; seed++) {
+      const plan = buildMatchPlan(input, parents, seeded(seed))
+      const room = plan.rooms.find((r) => r.members.some((m) => m.uuid === "near"))!
+      expect(room.members.some((m) => m.uuid.startsWith("old"))).toBe(true)
+    }
+  })
+
+  it("prefers the same country over a closer age", () => {
+    const input = [
+      ...people(3, (i) => ({ uuid: `nl${i}`, tags: { country: "Netherlands", teen: "12–13" } })),
+      ...people(3, (i) => ({ uuid: `sa${i}`, tags: { country: "Saudi Arabia", teen: "16–17" } })),
+      { uuid: "x", name: "X", tags: { country: "Netherlands", teen: "16–17" } },
+    ]
+    const plan = buildMatchPlan(input, parents, seeded(3))
+    const room = plan.rooms.find((r) => r.members.some((m) => m.uuid === "x"))!
+    expect(room.members.some((m) => m.uuid.startsWith("nl"))).toBe(true)
   })
 })
 

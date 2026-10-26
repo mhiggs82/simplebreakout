@@ -46,12 +46,6 @@ export interface OpenSpaceSettings {
   minutes: number
 }
 
-export interface SpectrumSettings {
-  groupSize: number
-  minutes: number
-  prompt: string
-}
-
 export interface ActivitySettings {
   activity: Activity
   cafe: CafeSettings
@@ -61,15 +55,15 @@ export interface ActivitySettings {
   tps: TpsSettings
   gallery: GallerySettings
   openSpace: OpenSpaceSettings
-  spectrum: SpectrumSettings
 }
 
+/** Ready-made conversation starters. */
 export const ICEBREAKERS = [
-  "What's something you're looking forward to this month?",
-  "What's a small win you had this week?",
-  "What's one thing people usually get wrong about your work?",
-  "Share a book, show or podcast you'd recommend, and why.",
-  "What's a question you wish more people asked you?",
+  "Say hello. What brought you here today?",
+  "What's one thing that went well for you this week?",
+  "What stood out to you from what we just heard?",
+  "What's one question you'd like answered today?",
+  "What's one small thing you'll try after this session?",
 ]
 
 export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
@@ -84,9 +78,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     rounds: 3,
     minutes: 15,
     prompts: [
-      "What question, if answered, would make the biggest difference here?",
-      "What patterns are you hearing across tables?",
-      "What's one thing we could try next week?",
+      "Talk about this table's topic. What do you each think?",
+      "New table: what are you hearing that's different from your last table?",
+      "Last table: pick one idea to share with everyone.",
     ],
   },
   speed: { groupSize: 2, rounds: 5, minutes: 3, prompts: ICEBREAKERS.slice(0, 3), roomLabels: [] },
@@ -105,9 +99,9 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     share: { minutes: 5, prompt: "Share: let's hear the insights from each pair." },
   },
   gallery: {
-    stations: ["Onboarding", "Communication", "Tools", "Wellbeing"],
+    stations: ["Idea 1", "Idea 2", "Idea 3", "Idea 4"],
     minutes: 6,
-    prompts: ["What's working here?", "What's missing from this idea?", "How could we make it twice as good?"],
+    prompts: ["What do you like about this idea?", "What did the last group miss?", "How could it be even better?"],
   },
   openSpace: {
     tables: [
@@ -117,10 +111,11 @@ export const DEFAULT_ACTIVITY_SETTINGS: ActivitySettings = {
     ],
     minutes: 0,
   },
-  spectrum: { groupSize: 4, minutes: 8, prompt: "Why did you place yourself where you did?" },
 }
 
 const STORAGE_KEY = "simplebreakout.activities.v1"
+
+const ACTIVITIES: readonly Activity[] = ["match", "cafe", "speed", "fishbowl", "oneTwoFour", "openSpace", "tps", "gallery"]
 
 function load(): ActivitySettings {
   try {
@@ -129,6 +124,8 @@ function load(): ActivitySettings {
       return {
         ...DEFAULT_ACTIVITY_SETTINGS,
         ...saved,
+        // Formats that were removed (e.g. polls, spectrum) fall back to Match.
+        activity: ACTIVITIES.includes(saved.activity) ? saved.activity : DEFAULT_ACTIVITY_SETTINGS.activity,
         cafe: { ...DEFAULT_ACTIVITY_SETTINGS.cafe, ...saved.cafe },
         speed: { ...DEFAULT_ACTIVITY_SETTINGS.speed, ...saved.speed },
         fishbowl: { ...DEFAULT_ACTIVITY_SETTINGS.fishbowl, ...saved.fishbowl },
@@ -136,7 +133,6 @@ function load(): ActivitySettings {
         tps: { ...DEFAULT_ACTIVITY_SETTINGS.tps, ...saved.tps },
         gallery: { ...DEFAULT_ACTIVITY_SETTINGS.gallery, ...saved.gallery },
         openSpace: { ...DEFAULT_ACTIVITY_SETTINGS.openSpace, ...saved.openSpace },
-        spectrum: { ...DEFAULT_ACTIVITY_SETTINGS.spectrum, ...saved.spectrum },
       }
     }
   } catch {

@@ -15,17 +15,14 @@ import { useId, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ResultsView } from "@/components/results-view"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useAttendeeSession } from "@/hooks/use-attendee-session"
 import { formatClock, useNow } from "@/hooks/use-now"
 import { useSeatListener } from "@/hooks/use-seat-listener"
 import type { Answers } from "@/lib/matchmaking/types"
-import type { HarvestItem, OpenTable, PulseQuestion, PulseResults, Questionnaire, RoundInfo, Vote } from "@/lib/messages"
+import type { HarvestItem, OpenTable, Questionnaire, RoundInfo } from "@/lib/messages"
 import type { ZoomClient } from "@/lib/zoom-client"
 
 function Choice({
@@ -115,12 +112,11 @@ function QuestionForm({
 }
 
 const ACTIVITY_NAMES: Record<RoundInfo["activity"], string> = {
-  cafe: "World Café",
-  speed: "Speed Networking",
+  cafe: "Rotating tables",
+  speed: "Pairs",
   oneTwoFour: "1-2-4-All",
-  tps: "Think-Pair-Share",
+  tps: "Think, pair, share",
   gallery: "Gallery walk",
-  spectrum: "Spectrum line",
 }
 
 function InsightBox({ sent, onSend, label }: { sent: number; onSend: (text: string) => Promise<void>; label: string }) {
@@ -210,7 +206,7 @@ function RoundCard({
           <InsightBox
             sent={insightsSent}
             onSend={onInsight}
-            label={round.activity === "gallery" ? "Leave a note for the next group" : "Your group's key insight"}
+            label={round.activity === "gallery" ? "Leave a note for the next group" : "Your group's best idea"}
           />
         )}
         {warning !== null && (
@@ -263,104 +259,6 @@ function FishbowlAttendeeCard({
           </Button>
         </CardFooter>
       )}
-    </Card>
-  )
-}
-
-function PollCard({
-  poll,
-  myVote,
-  results,
-  onVote,
-}: {
-  poll: PulseQuestion
-  myVote: Vote | null
-  results: PulseResults | null
-  onVote: (vote: Vote) => Promise<void>
-}) {
-  const id = useId()
-  const [text, setText] = useState("")
-  const [value, setValue] = useState(5)
-  const [sending, setSending] = useState(false)
-  const send = (vote: Vote) => {
-    setSending(true)
-    onVote(vote).finally(() => setSending(false))
-  }
-  const answered = myVote !== null
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription>
-          {poll.kind === "poll" ? "Quick poll" : poll.kind === "cloud" ? "Word cloud" : "Spectrum line"} · anonymous
-        </CardDescription>
-        <CardTitle className="text-lg leading-snug">{poll.question}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {poll.kind === "poll" && (
-          <RadioGroup
-            aria-label={poll.question}
-            value={myVote && "choice" in myVote ? String(myVote.choice) : ""}
-            onValueChange={(v) => send({ choice: Number(v) })}
-            disabled={sending}
-          >
-            {(poll.options ?? []).map((option, i) => (
-              <div key={option + i} className="flex items-center gap-2">
-                <RadioGroupItem value={String(i)} id={`${id}-${i}`} />
-                <Label htmlFor={`${id}-${i}`} className="font-normal">{option}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )}
-        {poll.kind === "cloud" && (
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (text.trim()) send({ text: text.trim() })
-            }}
-          >
-            <Label htmlFor={id} className="sr-only">Your answer (up to 3 words)</Label>
-            <Input id={id} maxLength={30} placeholder="Up to 3 words" value={text} onChange={(e) => setText(e.target.value)} />
-            <Button type="submit" disabled={sending || !text.trim()}>
-              <Send /> {answered ? "Update" : "Send"}
-            </Button>
-          </form>
-        )}
-        {poll.kind === "spectrum" && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Slider
-                thumbLabel={`Your position from 1 (${poll.labels?.[0] ?? "low"}) to 10 (${poll.labels?.[1] ?? "high"})`}
-                min={1}
-                max={10}
-                step={1}
-                value={[value]}
-                onValueChange={([v]) => setValue(v)}
-              />
-              <span className="w-6 text-right font-mono text-lg tabular-nums">{value}</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>← {poll.labels?.[0]}</span>
-              <span>{poll.labels?.[1]} →</span>
-            </div>
-            <Button className="w-full" disabled={sending} onClick={() => send({ value })}>
-              <Send /> {answered ? "Update my position" : "Place me here"}
-            </Button>
-          </div>
-        )}
-        {answered && (
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-live="polite">
-            <CheckCircle2 className="size-4 text-primary" /> Thanks! You can change your answer until the host closes it.
-          </p>
-        )}
-        {results && results.id === poll.id && (
-          <section aria-label="Results" className="space-y-2 border-t pt-4">
-            <h3 className="text-sm font-medium">Results</h3>
-            <ResultsView results={results} />
-          </section>
-        )}
-      </CardContent>
     </Card>
   )
 }
@@ -473,10 +371,6 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
     )
   }
 
-  if (session.poll) {
-    return <PollCard poll={session.poll} myVote={session.myVote} results={session.results} onVote={session.vote} />
-  }
-
   if (session.round) {
     return (
       <>
@@ -513,7 +407,8 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Hourglass className="size-5" /> Waiting for the host</CardTitle>
           <CardDescription>
-            Keep this panel open. Questions, round prompts and timers from the host will appear here.
+            Keep this panel open to see tasks and timers here. If you close it, that's fine: the host still
+            moves you to rooms, and tasks also appear in the Zoom chat.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -528,7 +423,7 @@ export function AttendeePanel({ client, selfUuid }: { client: ZoomClient; selfUu
           {submitted ? (
             <><CheckCircle2 className="size-4 text-primary" /> Your answers were sent to the host.</>
           ) : (
-            "Your answers help the host match you with the right people."
+            "Your answers help the host put you in the right room."
           )}
         </CardDescription>
       </CardHeader>

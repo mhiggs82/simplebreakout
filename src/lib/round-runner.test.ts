@@ -63,6 +63,29 @@ describe("RoundRunner", () => {
     expect(sent.at(-1)).toEqual({ type: "ended" })
   })
 
+  it("posts each task to the Zoom chat before rooms open, then welcomes everyone back", async () => {
+    const { client, runner } = setup({ chat: true, rounds: 2 })
+    const chat: string[] = []
+    client.sendMessageToChat = vi.fn(async ({ message }) => {
+      chat.push(message)
+      return { result: [] }
+    })
+    void runner.start()
+    await settle()
+    expect(chat).toEqual(["Round 1 of 2 · 3 min: Prompt 1"])
+    await vi.advanceTimersByTimeAsync(2 * (3 * 60_000 + 10_000))
+    expect(runner.current.phase).toBe("done")
+    expect(chat).toEqual(["Round 1 of 2 · 3 min: Prompt 1", "Round 2 of 2 · 3 min: Prompt 2", "Welcome back to the main room."])
+  })
+
+  it("stays out of the chat unless asked", async () => {
+    const { client, runner } = setup()
+    client.sendMessageToChat = vi.fn(async () => ({ result: [] }))
+    void runner.start()
+    await settle()
+    expect(client.sendMessageToChat).not.toHaveBeenCalled()
+  })
+
   it("pauses, resumes with the time that was left, and extends", async () => {
     const { runner } = setup()
     void runner.start()

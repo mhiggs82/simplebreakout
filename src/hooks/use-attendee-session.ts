@@ -7,11 +7,8 @@ import {
   encode,
   type HarvestItem,
   type OpenTable,
-  type PulseQuestion,
-  type PulseResults,
   type Questionnaire,
   type RoundInfo,
-  type Vote,
 } from "@/lib/messages"
 import type { ZoomClient } from "@/lib/zoom-client"
 
@@ -28,9 +25,6 @@ export function useAttendeeSession(client: ZoomClient, selfUuid: string) {
   const [warning, setWarning] = useState<number | null>(null)
   const [stage, setStage] = useState<string[] | null>(null)
   const [handRaised, setHandRaised] = useState(false)
-  const [poll, setPoll] = useState<PulseQuestion | null>(null)
-  const [myVote, setMyVote] = useState<Vote | null>(null)
-  const [results, setResults] = useState<PulseResults | null>(null)
   const [harvest, setHarvest] = useState<HarvestItem[] | null>(null)
   const [station, setStation] = useState<{ room: string; notes: string[] } | null>(null)
   const [tables, setTables] = useState<OpenTable[] | null>(null)
@@ -63,14 +57,6 @@ export function useAttendeeSession(client: ZoomClient, selfUuid: string) {
             return message.round
           })
           break
-        case "poll":
-          setPoll(message.poll)
-          setMyVote(null)
-          setResults(null)
-          break
-        case "results":
-          setResults(message.results)
-          break
         case "harvest":
           setHarvest(message.items)
           break
@@ -95,8 +81,6 @@ export function useAttendeeSession(client: ZoomClient, selfUuid: string) {
           setWarning(null)
           setStage(null)
           setHandRaised(false)
-          setPoll(null)
-          setResults(null)
           setStation(null)
           setTables(null)
           break
@@ -131,15 +115,6 @@ export function useAttendeeSession(client: ZoomClient, selfUuid: string) {
     [client],
   )
 
-  const vote = useCallback(
-    async (next: Vote) => {
-      if (!poll) return
-      await client.sendMessage({ payload: encode({ type: "vote", pollId: poll.id, vote: next }) })
-      setMyVote(next)
-    },
-    [client, poll],
-  )
-
   const sendInsight = useCallback(
     async (text: string) => {
       await client.sendMessage({ payload: encode({ type: "insight", text: text.trim().slice(0, 200) }) })
@@ -154,10 +129,6 @@ export function useAttendeeSession(client: ZoomClient, selfUuid: string) {
   )
 
   return {
-    poll,
-    myVote,
-    vote,
-    results,
     harvest,
     station,
     tables,

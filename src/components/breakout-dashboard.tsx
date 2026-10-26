@@ -34,7 +34,7 @@ export function BreakoutDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="size-5 text-destructive" aria-hidden="true" />
-            Can't start Global Breakout
+            Can't start Easy Breakouts
           </CardTitle>
           <CardDescription>{zoom.error}</CardDescription>
         </CardHeader>
@@ -48,7 +48,7 @@ export function BreakoutDashboard() {
         <div className="flex min-w-0 items-center gap-2.5">
           <img src={mark} alt="" className="size-8 shrink-0" />
           <div className="min-w-0 space-y-0.5">
-            <h1 className="font-serif text-xl font-semibold">Global Breakout</h1>
+            <h1 className="font-serif text-xl font-semibold">Easy Breakouts</h1>
             <p className="truncate text-sm text-muted-foreground">{zoom.meeting.meetingTopic}</p>
           </div>
         </div>

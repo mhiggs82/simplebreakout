@@ -15,9 +15,9 @@ export function InstalledPage() {
         <img src={mark} alt="ParentWise" className="mb-2 size-10" />
         <CardTitle className="flex items-center gap-2 font-serif text-xl">
           <CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
-          Global Breakout is added to your Zoom
+          Easy Breakouts is added to your Zoom
         </CardTitle>
-        <CardDescription>You can close this tab.</CardDescription>
+        <CardDescription>Put people in the right breakout rooms, in one click. You can close this tab now.</CardDescription>
       </CardHeader>
       <CardContent>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
@@ -26,7 +26,7 @@ export function InstalledPage() {
             Click <strong>Apps</strong> in the meeting toolbar.
           </li>
           <li>
-            Choose <strong>Global Breakout</strong>.
+            Choose <strong>Easy Breakouts</strong>.
           </li>
         </ol>
       </CardContent>
